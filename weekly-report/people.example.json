@@ -1,0 +1,29 @@
+{
+  "_comment": "PMO 週報網頁的名單。順序 = 網頁側欄順序。加減人用 build.py --add/--remove(會先跟 PMO 對名字),或直接改這裡。",
+  "title": "WebTeam",
+  "author": "KuanLin",
+  "_leader_comment": "組長:側欄排最上面、跟組員分開。名字要跟 people 裡的一樣。",
+  "leader": "John Lee",
+  "people": [
+    "KuanLin",
+    "Nina Cheng",
+    "Kevin Huang",
+    "Lily Wu",
+    "Amy Chang",
+    "John Lee",
+    "Mike Cheng"
+  ],
+  "_nav_names_comment": "只用在側欄的顯示名稱(PMO 名字 -> 側欄名字);頁面標題、抽屜等其他地方照 PMO 名字。",
+  "nav_names": {
+    "Nina Cheng": "Nina",
+    "Kevin Huang": "Kevin",
+    "Lily Wu": "Lily",
+    "Amy Chang": "Amy",
+    "John Lee": "John",
+    "Mike Cheng": "Mike"
+  },
+  "_taiga_comment": "PMO 名字 -> Taiga 帳號(username)。只有兩邊名字對不起來的人才需要寫,其他人自動比對。",
+  "taiga_users": {
+    "Nina Cheng": "nina"
+  }
+}

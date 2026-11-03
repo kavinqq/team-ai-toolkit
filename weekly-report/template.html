@@ -1,0 +1,2168 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{
+  --paper:#F1F3F7; --card:#fff; --ink:#171B26; --soft:#5C6377; --faint:#8990A2;
+  --line:#E1E5EE; --line2:#EBEEF4;
+  --done:#1A8C4A;  --done-bg:#E8F6EE;
+  --late:#D92D20;  --late-bg:#FDECEA;
+  --soon:#D08700;  --soon-bg:#FEF6E3;
+  --doing:#2563EB; --doing-bg:#EAF1FE;
+  --wait:#6B7280;  --wait-bg:#F1F2F5;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}   /* 有 display 設定的元素(例 .nt-out 是 flex)也要能被 hidden 藏起來 */
+/* 數字一律等寬對齊:週報全是日期與計數,跳動的數字寬度會讓整頁看起來在抖 */
+.pill,time,.cont,.ct,.col-d,.col-n,.lr,.ls,.brand-s,.sub,.dw-dt,.tg-m{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+     font-size:15px;line-height:1.6;display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--doing);outline-offset:2px;border-radius:4px}
+
+/* ---------- 側欄 ---------- */
+.nav{min-width:0;background:var(--card);border-right:1px solid var(--line);
+     position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 0 0;
+     display:flex;flex-direction:column}
+.brand{padding:0 18px 18px}
+.brand-t{font-size:16px;font-weight:700;letter-spacing:-.015em}
+.brand-s{font-size:11.5px;color:var(--faint);font-family:var(--mono);margin-top:3px}
+/* 重抓時自動對齊 Taiga 的 PMO 卡:收合成一行,點開看是哪幾張 */
+.sync{margin-top:6px;font-size:11.5px;color:#1B7F4B}
+.sync summary{cursor:pointer;font-weight:600}
+.sync ul{margin:4px 0 0;padding:0 0 0 14px;color:var(--soft);line-height:1.5}
+.sync li{margin-bottom:3px}
+/* 重抓鈕:只有透過本機的 serve.py 開啟時才會顯示(靜態開啟沒有那支端點) */
+.rb{margin-top:8px;font:inherit;font-size:11.5px;font-family:var(--mono);cursor:pointer;
+    padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:#fff;
+    color:var(--ink);transition:background .15s,color .15s,border-color .15s}
+.rb:hover:not(:disabled){background:var(--doing);color:#fff;border-color:var(--doing)}
+.rb:disabled{cursor:not-allowed;opacity:.55}
+.rb-msg{margin-top:5px;font-size:11px;font-family:var(--mono);color:var(--faint);
+        line-height:1.45;overflow-wrap:anywhere}
+.rb-msg.bad{color:#8A5A00}
+/* 成員清單:只有名字,有逾期才在右邊掛淡紅「逾期 N」(數字一定帶字)。
+   頭像、「本週在手 N」都試過,使用者覺得不需要(2026-10-11)。 */
+.navlist{display:flex;flex-direction:column;padding:0 10px;gap:2px}
+.navh{display:flex;align-items:baseline;gap:6px;margin:16px 10px 6px;
+      font-size:10.5px;font-weight:700;letter-spacing:.14em;color:var(--faint)}
+.navh:first-child{margin-top:4px}
+.navh .n{font-family:var(--mono);letter-spacing:0;font-weight:600}
+.navlink{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 12px;border-radius:10px;
+         text-decoration:none;color:var(--ink);transition:background .12s ease}
+.navlink:hover{background:var(--paper)}
+.navlink[aria-current="page"]{background:var(--ink);color:#fff}
+.who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.who .nm{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navlink .bad{flex:none;font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;
+              color:var(--late);background:var(--late-bg);border-radius:20px;padding:2px 7px}
+.navlink[aria-current="page"] .bad{background:#fff}
+/* 組長那列多一層淡底,跟組員在視覺上分開 */
+.navlink.lead{background:var(--paper)}
+.navlink.lead:hover{background:var(--line2)}
+.navlink.lead[aria-current="page"]{background:var(--ink)}
+.navsep{height:1px;background:var(--line2);margin:10px 16px}
+.note{padding:14px 18px;margin:8px 10px 0;font-size:12px;color:var(--soft);
+      background:var(--paper);border-radius:8px}
+.note b{color:var(--ink)}
+.note .k{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--faint);margin:0 0 4px}
+.note p{margin:0}
+.dod{margin:6px 0 0;padding:0;list-style:none}
+.dod+p{margin-top:10px}
+.dod li{display:flex;align-items:baseline;gap:8px;line-height:1.7}
+.dod span{flex:0 0 40px;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.06em}
+.dod li:first-child span{color:#1B7F4B}
+.dod li:last-child span{color:#5B44C0}
+/* 側欄底部:數字鐘 + 署名。時鐘用等寬 + tabular-nums,秒數跳動時字寬不會晃。
+   星期直接寫出來 —— 整份報表是以「週」為單位在讀的。 */
+.foot{margin-top:auto;padding:14px 18px 16px;border-top:1px solid var(--line2)}
+.clock{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.c-d{display:block;font-size:10.5px;color:var(--faint);letter-spacing:.1em}
+.c-t{display:block;font-size:23px;font-weight:700;line-height:1.25;color:var(--ink);
+     letter-spacing:-.01em;margin-top:1px}
+.by{margin-top:11px;font-size:10.5px;color:#A3A9B8;letter-spacing:.03em}
+
+/* ---------- 主區 ---------- */
+.main{min-width:0;padding:38px 40px 88px;max-width:1560px}
+.h1{font-size:32px;font-weight:700;letter-spacing:-.028em;margin:0;line-height:1.18}
+.sub{color:var(--soft);font-size:12.5px;margin:7px 0 0;font-family:var(--mono);letter-spacing:.01em}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+/* ---------- 項目順序(個人頁頂端;組長手填,沒填就不顯示) ----------
+   檢視:一排帶編號的步驟,第 1 順位實心強調,步驟之間用箭頭表示先後。
+   編輯:就地展開成清單(輸入框 + 上移/下移/刪除),不開彈窗 —— 改的東西就在眼前。 */
+.ord{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px 14px;
+     margin:0 0 20px;box-shadow:0 1px 2px rgba(23,27,38,.04)}
+.ord-h{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.ord-t{margin:0;font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--faint)}
+.ord-wk{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--soft);background:var(--paper);
+        border-radius:20px;padding:2px 9px}
+/* 週別切換:兩顆並排的分段按鈕,選中的實心 */
+.ord-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ord-wkb{font:inherit;font-family:var(--mono);font-size:11.5px;font-weight:600;padding:5px 10px;min-height:30px;
+         border:0;background:var(--card);color:var(--soft);cursor:pointer}
+.ord-wkb+.ord-wkb{border-left:1px solid var(--line)}
+.ord-wkb[aria-checked="true"]{background:var(--ink);color:#fff}
+.ord-btn{margin-left:auto;font:inherit;font-size:12px;font-weight:600;padding:5px 12px;min-height:30px;
+         border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--soft);cursor:pointer}
+.ord-btn:hover{background:var(--ink);border-color:var(--ink);color:#fff}
+.ord-l{display:flex;flex-wrap:wrap;align-items:center;gap:8px 0;margin:0;padding:0;list-style:none}
+.ord-l li{display:flex;align-items:center}
+.ord-l li:not(:last-child)::after{content:"→";margin:0 10px;color:var(--faint);font-size:13px}
+.ord-p{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:999px;
+       border:1px solid var(--line);background:var(--card);font-size:13.5px;line-height:1.3}
+.ord-n{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+       background:var(--paper);color:var(--soft);font-family:var(--mono);font-size:11.5px;font-weight:700}
+.ord-l li:first-child .ord-p{border-color:var(--ink);font-weight:600}
+.ord-l li:first-child .ord-n{background:var(--ink);color:#fff}
+.ord-empty{margin:0 0 16px}
+.ord-add0{font:inherit;font-size:12.5px;font-weight:600;color:var(--soft);padding:8px 14px;border-radius:10px;
+          border:1px dashed #C7CCD6;background:transparent;cursor:pointer}
+.ord-add0:hover{border-color:var(--ink);color:var(--ink);background:var(--card)}
+/* 編輯模式 */
+.ord-ed{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.ord-r{display:flex;align-items:center;gap:8px}
+.ord-in{flex:1;min-width:0;font:inherit;font-size:13.5px;height:34px;padding:0 10px;border:1px solid #C7CCD6;
+        border-radius:7px;background:#fff;color:var(--ink)}
+.ord-in:focus{outline:2px solid #C9D6F5;border-color:var(--doing)}
+.ord-ic{flex:none;font:inherit;font-size:13px;width:32px;height:32px;border-radius:7px;cursor:pointer;
+        border:1px solid var(--line);background:var(--card);color:var(--soft)}
+.ord-ic:hover:not(:disabled){background:var(--paper);color:var(--ink)}
+.ord-ic:disabled{opacity:.35;cursor:default}
+.ord-del{flex:none;font:inherit;font-size:12px;height:32px;padding:0 10px;border-radius:7px;cursor:pointer;
+         border:1px solid transparent;background:transparent;color:var(--late)}
+.ord-del:hover{background:var(--late-bg)}
+.ord-f{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ord-more{font:inherit;font-size:12.5px;font-weight:600;color:var(--soft);padding:6px 10px;border-radius:7px;
+          border:1px dashed #C7CCD6;background:transparent;cursor:pointer}
+.ord-more:hover{border-color:var(--ink);color:var(--ink)}
+.ord-save{margin-left:auto;font:inherit;font-size:12.5px;font-weight:600;min-height:32px;padding:6px 16px;
+          border-radius:7px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+.ord-save:disabled{opacity:.5;cursor:default}
+.ord-cancel{font:inherit;font-size:12.5px;min-height:32px;padding:6px 12px;border-radius:7px;cursor:pointer;
+            border:1px solid var(--line);background:var(--card);color:var(--soft)}
+.ord-msg{width:100%;margin:6px 0 0;font-size:12px;color:#a33}
+.ord-hint{margin:8px 0 0;font-size:11.5px;color:var(--faint)}
+/* ---------- 組長專區 ----------
+   class 一律用 lz-(leader zone)開頭,不要用 ad-:廣告攔截擴充會把 .ad-card / .ad-row 這類
+   class 當廣告藏掉(2026-10-11 組長的 Chrome 就因此整片空白,只剩標題)。
+   側欄底部一個只有組長看得到的區塊(專區 + 常駐的 Notion 週報連結),專區本身是一頁 #/admin。
+   三張卡片由上而下:每週最常用的 Notion 週報 → 人員 → 很少動的設定。 */
+.navlink.lzn{color:var(--soft)}
+.navlink.lzn .nm{font-weight:600}
+.navlink.lzn .ext{font-size:12px;color:var(--faint)}
+.navlink.lzn[aria-current="page"]{color:#fff}
+.lz{max-width:880px;display:flex;flex-direction:column;gap:18px}
+.lz-h1{margin:0;font-size:22px;letter-spacing:-.01em}
+.lz-sub{margin:4px 0 0;font-size:13px;color:var(--soft)}
+.lz-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;
+         display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 2px rgba(23,27,38,.04)}
+.lz-card h2{margin:0;font-size:15px}
+.lz-card .why{margin:-8px 0 0;font-size:12.5px;color:var(--soft)}
+.lz-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.lz-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.lz-f label{font-size:11.5px;font-weight:600;color:var(--soft)}
+.lz-in{font:inherit;font-size:13.5px;height:36px;padding:0 10px;border:1px solid #C7CCD6;border-radius:8px;
+       background:#fff;color:var(--ink);min-width:0}
+.lz-in:focus{outline:2px solid #C9D6F5;border-color:var(--doing)}
+.lz-in.bad{border-color:var(--late);background:var(--late-bg)}
+.lz-btn{font:inherit;font-size:13px;font-weight:600;height:36px;padding:0 16px;border-radius:8px;cursor:pointer;
+        border:1px solid var(--ink);background:var(--ink);color:#fff;text-decoration:none;display:inline-flex;
+        align-items:center;gap:6px;white-space:nowrap}
+.lz-btn:disabled{opacity:.5;cursor:default}
+.lz-btn.ghost{background:var(--card);color:var(--ink);border-color:var(--line)}
+.lz-btn.ghost:hover{border-color:var(--ink)}
+.lz-btn.danger{background:var(--card);color:var(--late);border-color:#F2C4BF}
+.lz-btn.danger.solid{background:var(--late);border-color:var(--late);color:#fff}
+.lz-btn.sm{height:30px;padding:0 10px;font-size:12px}
+.lz-msg{margin:0;font-size:12.5px;color:var(--soft)}
+.lz-msg.ok{color:#2f6b3c}
+.lz-msg.bad{color:#a33}
+.lz-tbl{overflow-x:auto}
+.lz-tbl table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+.lz-tbl th{text-align:left;font-size:11.5px;font-weight:600;color:var(--faint);padding:0 8px 6px;border-bottom:1px solid var(--line)}
+.lz-tbl td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:middle}
+.lz-tbl td.mono{font-family:var(--mono);font-size:12.5px;color:var(--soft)}
+.lz-tbl .acts{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.lz-lead{font-size:10.5px;font-weight:700;color:#fff;background:var(--ink);border-radius:20px;padding:1px 8px;margin-left:6px}
+.lz-add{border-top:1px dashed var(--line);padding-top:14px}
+/* Notion 週報預覽:就是要貼進 Notion 的樣子(標題 + 表格),複製時整塊選取帶 HTML 過去 */
+.nt-out{display:flex;flex-direction:column;gap:12px}
+.nt-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nt-title b{font-family:var(--mono);font-size:14px}
+.nt-prev{border:1px solid var(--line);border-radius:10px;padding:4px 16px 14px;max-height:520px;overflow:auto;background:#fff;color:#171B26}
+.nt-prev h3{font-size:15px;margin:14px 0 6px}
+.nt-prev table{border-collapse:collapse;width:100%;font-size:13px}
+.nt-prev td{border:1px solid #D9DDE5;padding:5px 8px;vertical-align:top}
+.nt-prev tr:first-child td{background:#F3F4F7;font-weight:600}
+/* 看板卡片上的順位標籤:帶字,不是只有一個數字 */
+.ordb{font-family:var(--mono);font-size:10.5px;font-weight:700;color:#fff;background:var(--ink);
+      border-radius:20px;padding:1px 8px;white-space:nowrap}
+
+/* 看板 */
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;
+       align-items:start;margin-top:22px}
+.col{background:#E9ECF3;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:10px;
+     min-width:0}
+/* 四週各自的框色(使用者指定):上週紅 / 本週綠 / 下週藍 / 下下週灰。
+   注意這組顏色與卡片的狀態色是同一組色相,兩者語意不同 —— 所以週框只上「框線」,
+   不上底色,狀態才有填色與色點,避免兩套訊號互相冒充。 */
+.col{border-width:1.5px}
+.col.w0{border-color:#F0B7B1;background:#FDF6F5}
+.col.w1{border-color:#A9D8BE;background:#F3FAF6}
+.col.w2{border-color:#B7CCF6;background:#F4F7FE}
+.col.w3{border-color:#DBDFE8;background:#F7F8FA}
+.col.now{box-shadow:0 1px 3px rgba(23,27,38,.06)}
+.col-h{display:flex;align-items:baseline;gap:6px;padding:2px 5px 0;min-width:0}
+.col-t{font-size:13.5px;font-weight:700;margin:0;white-space:nowrap}
+.col.now .col-t::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+                        background:var(--doing);margin-right:6px;vertical-align:middle}
+.col-d{font-family:var(--mono);font-size:11px;color:var(--faint);white-space:nowrap;
+       overflow:hidden;text-overflow:ellipsis}
+.col-n{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint);flex:none}
+.col-e{color:var(--faint);font-size:12.5px;padding:10px 5px;text-align:center}
+
+/* 卡片 */
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--wait);
+      border-radius:10px;padding:14px 16px;box-shadow:0 1px 2px rgba(20,25,40,.05)}
+.card{box-shadow:0 1px 2px rgba(23,27,38,.05);transition:box-shadow .15s ease,transform .15s ease}
+.card:hover{border-color:#CBD1DE;box-shadow:0 3px 10px rgba(23,27,38,.09);transform:translateY(-1px)}
+.card.s-done{border-left-color:var(--done)}
+.card.s-doing{border-left-color:var(--doing)}
+.card.s-soon{border-left-color:var(--soon)}
+.card.s-late{border-left-color:var(--late);background:#FFFCFC}
+/* 搞定的卡整張退到背景:不是隱藏,是「不用鳥它」。滑上去會恢復,要看還是看得到。 */
+.card.settled{background:#F6F7F9;border-color:#E7EAF0;box-shadow:none;opacity:.4}
+.card.settled:hover{background:#fff;opacity:1}
+.card.settled .strip i.on{background:#CCD2DD}
+.ttl{font-size:16.5px;font-weight:700;margin:0;line-height:1.45;overflow-wrap:anywhere;
+     letter-spacing:-.012em}
+.meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px;
+      padding-bottom:9px;border-bottom:1px solid var(--line2)}
+.meta time{margin-left:auto}
+/* 平的狀態標記:一個色方塊 + 狀態字。不再用膠囊,免得跟卡片、連結列變成三層同構的圓角盒 */
+.pill{font-size:12px;font-weight:700;font-family:var(--mono);letter-spacing:.03em;
+      background:none;padding:0;display:inline-flex;align-items:center;gap:5px}
+.pill::before{content:"";width:7px;height:7px;border-radius:2px;background:currentColor;flex:none}
+.p-done{color:var(--done)}.p-doing{color:var(--doing)}.p-soon{color:var(--soon)}
+.p-late{color:var(--late)}.p-wait{color:var(--wait)}
+.meta time{font-family:var(--mono);font-size:13px;color:var(--soft)}
+.cont{font-family:var(--mono);font-size:11px;color:var(--faint);flex:none}
+.tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11.5px;
+     font-weight:700;text-decoration:none;padding:2px 8px;border-radius:6px;
+     background:var(--doing-bg);color:var(--doing);border:1px solid #C7D9FB}
+.tag:hover{background:var(--doing);color:#fff;border-color:var(--doing)}
+.tag.other{background:var(--wait-bg);color:var(--soft);border-color:var(--line)}
+.tag.pmo{background:#F2F0FB;color:#5B44C0;border-color:#D8D1F2}
+.tag.pmo:hover{background:#5B44C0;color:#fff;border-color:#5B44C0}
+.tag.other:hover{background:var(--soft);color:#fff;border-color:var(--soft)}
+/* 連結區:Taiga(綠) / PMO(紫) 分組。綠色只代表「這是 Taiga」,
+   完成與否仍由左邊那顆 PMO 狀態 pill 與各行末的狀態字表達。 */
+.lnk{margin-top:9px;display:flex;flex-direction:column;gap:7px}
+.lg{display:grid;grid-template-columns:48px 1fr;align-items:start;gap:8px}
+.lgl{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;
+     text-transform:uppercase;padding-top:5px;color:var(--soft)}
+.lgi{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lrow{display:flex;align-items:baseline;gap:7px;min-width:0;text-decoration:none;
+      font-size:12.5px;padding:3.5px 0 3.5px 10px;border:0;border-left:2px solid var(--line);
+      color:var(--ink)}
+.lrow:hover .lt{box-shadow:inset 0 -1px 0 currentColor}
+/* 點狀引導線:標題與右側狀態之間的距離會隨標題長度變動,用引導線接起來才讀得回去
+   (收據/目錄頁的作法,不是再畫一個框) */
+/* 收縮順序:**只截標題**,卡號與狀態永遠完整。
+   卡號被切成半個字(「（U」)比不顯示還糟,所以它不參與收縮。 */
+.lrow{flex-wrap:nowrap;overflow:hidden}
+.lrow .lt{flex:0 1 auto}
+.lr{display:flex;align-items:baseline;gap:7px;flex:0 0 auto;white-space:nowrap}
+.lrow .ls{flex:0 0 auto;margin-left:auto;padding-left:8px}
+.lrow .lt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lrow .lr{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.lrow .ls{font-family:var(--mono);font-size:11px;font-weight:700;flex:none}
+.lrow .wi{flex:none;font-style:normal}
+.tgg .lgl{color:#1B7F4B}
+.tgg .lrow{border-left-color:#1B7F4B}
+.tgg .lrow .ls{color:#1B7F4B}
+.tgg .lrow.bad{border-left-color:var(--soon)}
+.tgg .lrow.bad .ls,.tgg .lrow.bad .wi{color:#8A5A00}
+.pmg .lgl{color:#5B44C0}
+.pmg .lrow{border-left-color:#5B44C0}
+.pmg .lrow .ls{color:#5B44C0}
+.otg .lrow{border-left-color:var(--line)}
+.lnone{font-family:var(--mono);font-size:11px;color:var(--faint);
+       border:1px dashed var(--line);border-radius:6px;padding:2px 7px;align-self:flex-start}
+.nolink{font-family:var(--mono);font-size:11.5px;color:var(--faint);
+        border:1px dashed var(--line);border-radius:6px;padding:2px 8px}
+/* 分工是 PMO 那張卡底下的東西,所以掛在 PMO 群組內、與 PMO 那一行共用左側色條,
+   不再是卡片底下獨立的一塊。 */
+.parts{margin:1px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{font-size:12.5px;color:var(--soft);padding:1px 0 1px 24px;position:relative;
+          overflow-wrap:anywhere}
+.parts li::before{content:"└";position:absolute;left:11px;color:var(--faint)}
+
+.dot{width:12px;height:12px;border-radius:3.5px;background:var(--wait-bg);border:1px solid #D8DCE5}
+.dot.d-done{background:var(--done);border-color:var(--done)}
+.dot.d-doing{background:var(--doing);border-color:var(--doing)}
+.dot.d-soon{background:var(--soon);border-color:var(--soon)}
+.dot.d-late{background:var(--late);border-color:var(--late)}
+.dot.d-wait{background:#C9CDD8;border-color:#B9BEC9}
+.key{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px;padding-top:16px;border-top:1px solid var(--line);
+     font-size:12px;color:var(--soft)}
+.key span{display:inline-flex;align-items:center;gap:5px}
+
+
+/* 詳情抽屜 */
+.scrim{position:fixed;inset:0;background:rgba(20,25,40,.34);z-index:40;
+       animation:fade .14s ease-out}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(660px,100%);background:var(--card);
+        z-index:41;overflow-y:auto;box-shadow:-8px 0 32px rgba(20,25,40,.16);
+        animation:slide .18s cubic-bezier(.2,.7,.3,1)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes slide{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+.dw-h{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);
+      padding:18px 20px 14px;display:flex;gap:12px;align-items:flex-start}
+.dw-t{font-size:18px;font-weight:700;margin:0;line-height:1.4;flex:1;overflow-wrap:anywhere}
+.dw-x{flex:none;border:1px solid var(--line);background:var(--paper);border-radius:8px;
+      width:30px;height:30px;font-size:15px;line-height:1;cursor:pointer;color:var(--soft)}
+.dw-x:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+.dw-b{padding:16px 20px 40px}
+.dw-hd{display:contents}
+.dw-m{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.dw-s{margin:20px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--faint)}
+/* 抽屜分兩區:上面 PMO(紫)、下面 Taiga(綠),顏色跟連結 tag 同一套 */
+.dw-m .dw-pst,.dw-m time{color:#5B44C0}
+.dw-who{white-space:nowrap;color:var(--soft)}
+.dw-st{white-space:nowrap;font-family:var(--mono);font-size:11.5px}
+.dw-dt{white-space:nowrap;font-family:var(--mono);font-size:12.5px;color:var(--faint)}
+.tg-m{font-family:var(--mono);font-size:11px;color:var(--faint);margin:5px 0 0}
+.tg-role{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;
+         padding:1px 7px;border-radius:20px;border:1px solid #1B7F4B;white-space:nowrap}
+.tg-none{color:var(--faint)}
+.tg-id{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tg-ref{font-family:var(--mono);font-size:12.5px;font-weight:700;color:#1B7F4B;text-decoration:none}
+.tg-cp{font-size:11.5px;line-height:1.6;padding:0 7px;border-radius:5px;cursor:pointer;
+       border:1px solid #BFE3CD;background:var(--card);color:#1B7F4B}
+.tg-cp:hover{background:#1B7F4B;color:#fff;border-color:#1B7F4B}
+.tg-cp.done{background:var(--done-bg);color:var(--done)}
+.tg-ref:hover{text-decoration:underline}
+.tg-sub{color:inherit;text-decoration:none}
+.tg-sub:hover{color:#1B7F4B;text-decoration:underline}
+.drawer.tv-on .dw-b{display:none}
+.tv{padding:0 20px 48px}
+.tv-bar{position:sticky;top:var(--tv-top,0);z-index:1;display:flex;align-items:center;gap:10px;margin:0 -20px 16px;
+        padding:12px 20px;background:#F3FAF6;border-bottom:1px solid #BFE3CD}
+.tv-back{border:1px solid #BFE3CD;background:var(--card);color:#1B7F4B;border-radius:7px;padding:5px 11px;
+         font:inherit;font-size:13px;cursor:pointer;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-back:hover{background:#1B7F4B;color:#fff;border-color:#1B7F4B}
+.tv-open{margin-left:auto;font-size:13px;font-weight:600;color:#1B7F4B;text-decoration:none;white-space:nowrap}
+.tv-open:hover{text-decoration:underline}
+.tv-k{font-family:var(--mono);font-size:12.5px;font-weight:700;color:#1B7F4B}
+.tv-pj{font-size:12px;color:var(--faint);margin-left:8px}
+.tv-t{font-size:18px;font-weight:700;line-height:1.45;margin:6px 0 12px;overflow-wrap:anywhere}
+.tv-meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--soft);margin:0 0 6px}
+.tv-meta b{font-weight:600;color:var(--ink)}
+.tv-st{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)}
+.tv-st i{width:9px;height:9px;border-radius:50%;background:var(--dot,#70728F)}
+.tv-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+.tv-tags span{font-size:11.5px;padding:1px 8px;border-radius:20px;background:var(--paper);border:1px solid var(--line);color:var(--soft)}
+.tv-md{font-size:14px;line-height:1.75;color:var(--ink);overflow-wrap:anywhere}
+.tv-md img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:6px}
+.tv-md pre{background:var(--paper);padding:10px 12px;border-radius:6px;overflow-x:auto;font-size:12.5px}
+.tv-md code{font-family:var(--mono);font-size:.92em}
+.tv-md table{border-collapse:collapse;font-size:13px;display:block;overflow-x:auto}
+.tv-md th,.tv-md td{border:1px solid var(--line);padding:4px 8px}
+.tv-md blockquote{margin:0;padding-left:12px;border-left:3px solid var(--line);color:var(--soft)}
+.tv-md a{color:#1B7F4B}
+.tv-md h1,.tv-md h2,.tv-md h3,.tv-md h4{font-size:15px;margin:16px 0 6px}
+.tv-md > :first-child{margin-top:0}
+.tv-empty{font-size:13px;color:var(--faint);margin:0}
+.tv-ch{list-style:none;margin:0;padding:0}
+.tv-ch li{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5;font-size:13.5px}
+.tv-ch .tg-ref{flex:none}
+.tv-ch .s{flex:1;min-width:0}
+.tv-ch .w{flex:none;color:var(--soft);font-size:12.5px}
+.tv-ch li.cl .s{color:var(--faint);text-decoration:line-through}
+.tv-at{display:flex;flex-wrap:wrap;gap:10px}
+.tv-at a{display:flex;flex-direction:column;gap:4px;width:132px;font-size:12px;color:var(--soft);text-decoration:none;overflow-wrap:anywhere}
+.tv-at img{width:132px;height:90px;object-fit:cover;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
+.tv-at .f{display:flex;align-items:center;justify-content:center;width:132px;height:90px;border:1px solid var(--line);
+          border-radius:6px;background:var(--paper);font-family:var(--mono);font-size:12px;color:var(--faint)}
+.tv-at a:hover{color:#1B7F4B}
+.tv-cm{border-bottom:1px solid #f0f2f5;padding:12px 0}
+.tv-cm-h{font-size:12.5px;color:var(--soft);margin:0 0 6px}
+.tv-cm-h b{color:var(--ink);font-weight:600;margin-right:8px}
+.tv-msg{font-size:14px;color:var(--soft);padding:24px 0}
+.tv-msg.bad{color:#a33}
+.pm-sub{color:inherit;text-decoration:none}
+.pm-sub:hover{color:#5B44C0;text-decoration:underline}
+.tg-id .pm-ref{margin-bottom:0}
+.pm-cp{border-color:#D8D1F2;color:#5B44C0}
+.pm-cp:hover{background:#5B44C0;color:#fff;border-color:#5B44C0}
+.tg-tb tr.me td{background:#F3FAF6}
+.tg-tb .nm{max-width:none}
+/* 要壓過 .dw-ed 的紫色,選擇器得比 .dw-ed .sv 更具體 */
+.dw-ed.tg-tb select{width:132px;max-width:132px}
+.dw-ed.tg-tb select:focus{outline:2px solid #BFE3CD;border-color:#1B7F4B}
+.dw-ed.tg-tb .sv{background:#1B7F4B;border-color:#1B7F4B}
+.dw-ed.tg-tb .sv:disabled{background:#eceef1;border-color:#d5d9df;color:#a4abb5}
+.tg-role.as{background:#1B7F4B;color:#fff}
+.tg-role.wt{background:transparent;color:#1B7F4B}
+/* 全部儲存:每區一顆,至少兩個可改項目才出現(只有一列時跟那列自己的儲存鈕重複) */
+/* 在標題列靠右;訊息排在按鈕底下,不擠標題 */
+.bulk{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.dw-sh{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:24px 0 8px}
+.dw-st{font-size:14px;font-weight:700;letter-spacing:.04em}
+.dw-sh-pmo .dw-st{color:#5B44C0}
+.dw-sh-tg .dw-st{color:#1B7F4B}
+.dw-sm{font-size:11.5px;font-weight:600;color:var(--faint)}
+.dw-sh .dw-all{margin-left:0}
+.pm-ref{display:block;width:max-content;font-family:var(--mono);font-size:12.5px;font-weight:700;color:#5B44C0;
+        text-decoration:none;margin-bottom:4px}
+a.pm-ref:hover{text-decoration:underline}
+.sv-all{font:inherit;font-size:12px;font-weight:600;min-height:30px;padding:5px 14px;border-radius:6px;cursor:pointer;
+        border:1px solid var(--bk);background:var(--bk);color:#fff}
+.sv-all:disabled{background:#eceef1;border-color:#d5d9df;color:#a4abb5;cursor:default}
+.bulk-pmo{--bk:#5B44C0}
+.bulk-tg{--bk:#1B7F4B}
+.bulk-msg{font-size:11.5px;color:var(--soft)}
+/* 改了還沒存的那格:顏色之外加粗框,不只靠顏色辨識 */
+.dw-ed select.dirty{border:2px solid #C98A00;background:#FFF8E6}
+.bulk-msg.ok{color:#2f6b3c}
+.bulk-msg.bad{color:#a33}
+.cp{display:flex;gap:6px;margin:0 0 6px}
+.cp input{flex:1;min-width:0;font-family:var(--mono);font-size:12px;padding:6px 9px;
+          border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
+.cp button{flex:none;font-size:12px;padding:6px 11px;border-radius:7px;cursor:pointer;
+           border:1px solid var(--line);background:var(--card);color:var(--soft)}
+.cp button:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cp button.done{background:var(--done-bg);color:var(--done);border-color:#BFE3CD}
+.hint{font-size:12px;color:var(--soft);margin:8px 0 0;line-height:1.6}
+.steps{margin:0;padding:0;list-style:none;counter-reset:st}
+.steps li{position:relative;padding:0 0 11px 27px;font-size:13px;line-height:1.6}
+.steps li::before{counter-increment:st;content:counter(st);position:absolute;left:0;top:1px;
+  width:19px;height:19px;border-radius:50%;background:var(--ink);color:#fff;
+  font-family:var(--mono);font-size:11px;font-weight:700;text-align:center;line-height:19px}
+.steps .why{display:block;color:var(--faint);font-size:11.5px;margin-top:1px}
+.steps b{font-family:var(--mono);font-weight:700}
+.hint b{color:var(--ink)}
+.warn{border-radius:9px;padding:10px 13px;font-size:13px;margin:0 0 14px;
+      background:var(--soon-bg);border:1px solid #F0DCA8;color:#8A5A00}
+.warn b{color:#6B4500}
+.mis{font-family:var(--mono);font-size:11px;color:var(--soon);border:1px solid #F0DCA8;
+     background:var(--soon-bg);border-radius:6px;padding:1px 6px;flex:none}
+.card{cursor:pointer}
+.card:focus-visible{outline:2px solid var(--doing);outline-offset:2px}
+
+@media (max-width:1040px){
+  .board{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;
+         padding-bottom:10px;margin-left:-36px;margin-right:-36px;padding-left:36px;padding-right:36px}
+  .col{flex:0 0 min(80vw,300px);scroll-snap-align:start}
+}
+@media (max-width:880px){
+  body{grid-template-columns:1fr}
+  .nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:16px 0}
+  .navlist{flex-direction:row;overflow-x:auto;padding:0 12px 2px}
+  .navlink{flex:none}
+  .navsep,.note,.navh{display:none}
+  .main{padding:24px 18px 60px}
+  .h1{font-size:24px}
+  .drawer{width:100%}
+  .board{margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  body{grid-template-columns:1fr;background:#fff}
+  .nav{display:none}
+  .card{break-inside:avoid;border:1px solid #ccc}
+  .board{display:grid;grid-template-columns:repeat(2,1fr);overflow:visible}
+  .col{background:#fff;border:1px solid #ddd;break-inside:avoid}
+  .main{max-width:none;padding:0}
+}
+
+/* ---------- 在頁面上改 PMO 狀態 ---------- */
+/* 只有經由 serve.py 開、而且伺服器設了 PMO_API_KEY 才看得到;靜態開啟的畫面與以前完全相同。 */
+
+.dw-ed{width:100%;border-collapse:collapse;font-size:14px;margin-top:2px}
+.dw-ed th{text-align:left;font-weight:600;color:#6b7482;font-size:12px;padding:0 10px 6px 0;
+          border-bottom:1px solid #e6e9ee}
+.dw-ed td{padding:10px 10px 10px 0;border-bottom:1px solid #f0f2f5;vertical-align:middle}
+.dw-ed tr.me td{background:#f7fbff}
+.only-me tr.oth{display:none}
+.dw-ed tr.root td{border-bottom:1px solid #D8D1F2}
+.rt{display:inline-block;font-size:10.5px;font-weight:700;color:#5B44C0;background:#F2F0FB;
+    border:1px solid #D8D1F2;border-radius:4px;padding:0 5px;margin-right:6px;vertical-align:1px}
+.dw-all{margin-left:8px;font:inherit;font-size:11px;font-weight:600;padding:1px 8px;border:1px solid var(--line);
+        border-radius:20px;background:var(--card);color:var(--soft);cursor:pointer;vertical-align:1px}
+.dw-all:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+.dw-ed .nm{max-width:180px}
+/* 快照與即時表的列高要一樣:儲存鈕原生高 26.39px 會比狀態格高,換成即時資料時每列都抖一下 */
+.dw-ed select,.ed-ph{box-sizing:border-box;width:112px;height:30px;display:block}
+.dw-ed .sv{display:block;box-sizing:border-box;height:30px}
+.ed-ph{display:flex;align-items:center;font-size:13px;padding:3px 6px;border:1px solid transparent;color:var(--soft)}
+.dw-ed .bt{width:58px}
+.dw-ed select{font:inherit;font-size:13px;padding:3px 5px;
+          border:1px solid #c7ccd4;border-radius:4px;background:#fff;max-width:118px}
+.dw-ed select:disabled{background:#f1f2f4;color:#98a0ab;cursor:not-allowed}
+.dw-ed .sv{font:inherit;font-size:12.5px;padding:3px 9px;border:1px solid #5B44C0;border-radius:4px;
+           background:#5B44C0;color:#fff;cursor:pointer}
+.dw-ed select:focus{outline:2px solid #D8D1F2;border-color:#5B44C0}
+.dw-ed .sv:disabled{background:#eceef1;border-color:#d5d9df;color:#a4abb5;cursor:default}
+.dw-msg{font-size:11px;line-height:1.5;margin:3px 0 0}
+.dw-msg.ok{color:#2f6b3c}
+.dw-msg.bad{color:#a33}
+.dw-load{font-size:12px;color:#6b7482;margin:6px 0 0}
+.dw-hint{font-size:11.5px;line-height:1.6;color:#5b6472;background:#f7f8fa;border:1px solid #e6e9ee;
+         border-radius:6px;padding:8px;margin:8px 0 0}
+.tg .tag{background:#E8F6EE;color:#1B7F4B;border-color:#BFE3CD}
+.tg .tag:hover{background:#1B7F4B;color:#fff;border-color:#1B7F4B}
+.tg-ed{margin-top:8px}
+.tg-sel{font:inherit;font-size:12px;padding:3px 5px;border:1px solid #c7ccd4;border-radius:4px;background:#fff;max-width:180px}
+.tg-sel:focus{outline:2px solid #BFE3CD;border-color:#1B7F4B}
+</style>
+</head>
+<body>
+<aside class="nav">
+  <div class="brand">
+    <div class="brand-t">__TITLE__</div>
+    <div class="brand-s" id="gen">更新於 __GENERATED__</div>
+    <details class="sync" id="sync" hidden><summary></summary><ul></ul></details>
+    <button type="button" id="rb" class="rb" hidden>重抓資料</button>
+    <div class="rb-msg" id="rbmsg" hidden></div>
+  </div>
+  <nav class="navlist" id="navlist"></nav>
+  <div class="navsep"></div>
+  <div class="note">
+    <p>開始開發時：</p>
+    <ul class="dod">
+      <li><span>Taiga</span>改成 <b>In progress</b></li>
+      <li><span>PMO</span>改成 <b>進行中</b></li>
+    </ul>
+    <p>開發完成後：</p>
+    <ul class="dod">
+      <li><span>Taiga</span>改成 <b>Ready for test</b></li>
+      <li><span>PMO</span>改成 <b>交測</b></li>
+    </ul>
+  </div>
+  <div class="foot">
+    <div class="clock"><span class="c-d" id="cd">—</span><span class="c-t" id="ct">--:--:--</span></div>
+    <div class="by" id="by"></div>
+  </div>
+</aside>
+<main class="main" id="main"></main>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+var D = JSON.parse(document.getElementById("data").textContent);
+/* 組長排第一,組員維持 people.json 的順序 */
+if (D.leader) {
+  D.people.sort(function (a, b) { return (b.name === D.leader) - (a.name === D.leader); });
+}
+var WEEKS = D.weeks.map(function (w) { return w.label; });
+/* 沒指定人時(#/ 或空網址)開誰:組長,沒設就名單第一位 */
+/* 沒指定人時開第一位組員;組長的排程只從組長專區進(其他人不該看到) */
+var HOME = (D.people.filter(function (p) { return p.name !== D.leader; })[0] || D.people[0] || {}).name || "";
+(function () {
+  var box = document.getElementById("sync"), xs = D.synced || [];
+  if (!box || !xs.length) { return; }
+  box.querySelector("summary").textContent = "已自動對齊 Taiga " + xs.length + " 筆";
+  box.querySelector("ul").innerHTML = xs.map(function (x) {
+    return "<li>" + esc(x.assignee) + "・" + esc(x.name) + "：" + esc(x.frm) + " → " + esc(x.to) +
+      "（" + esc(x.why) + "）</li>";
+  }).join("");
+  box.hidden = false;
+})();
+var NOW = "本週";
+var CURRENT = null;   // 目前開啟的人員頁
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function md(d) { return d ? (+d.slice(5, 7)) + "/" + (+d.slice(8, 10)) : "—"; }
+/* 顯示狀態由 build.py 算好放在 r.kind(逾期 > 完成 > 快到期 > 進行中 > 待進行),
+   前端不重算 —— 免得「今天」在瀏覽器端和產出端不一致。 */
+function kind(r) { return r.kind; }
+var KTEXT = { late: "逾期", done: "完成", soon: "快到期", doing: "進行中", wait: "待進行" };
+
+function linksHTML(r) {
+  /* 分組列出,不是一排代號:單寫 US4085 讀的人不知道那是什麼,要看到標題。
+     Taiga 一組(綠)、PMO 一組(紫)。一個需求可能掛好幾張 Taiga 卡且狀態不同
+     (實測有 6 張的),所以狀態跟著各自那一行走,不共用一顆 pill。
+     標題可能很長 -> 單行截斷,滑上去看完整(title 屬性)。 */
+  var tg = r.links.filter(function (l) { return l.kind === "taiga"; });
+  var other = r.links.filter(function (l) { return l.kind !== "taiga"; });
+  var h = '<div class="lnk">';
+
+  h += '<div class="lg tgg"><span class="lgl">Taiga</span><div class="lgi">';
+  if (tg.length) {
+    h += tg.map(function (l) {
+      var t = l.taiga || null;
+      var ref = String(l.tag).replace(/^([A-Z]+)(\d+)$/, "$1-$2");
+      var title = t && t.subject ? t.subject : "";
+      return '<a class="lrow' + (l.mis ? " bad" : "") + '" href="' + esc(l.url) +
+        '" target="_blank" rel="noopener" title="' +
+        esc((title ? title + " " : "") + "(" + ref + ")" + (l.mis ? " — " + l.mis.text : "")) + '">' +
+        (l.mis ? '<i class="wi">⚠</i>' : "") +
+        '<span class="lt">' + esc(title || "（Taiga 標題未取得）") + '</span>' +
+        '<span class="lr">(' + esc(ref) + ')</span>' +
+        '<span class="ls">' + esc(t && t.status ? t.status : "狀態未取得") + '</span></a>';
+    }).join("");
+  } else {
+    h += '<span class="lnone">' + tgNone(r) + "</span>";
+  }
+  h += "</div></div>";
+
+  if (r.pmo) {
+    h += '<div class="lg pmg"><span class="lgl">PMO</span><div class="lgi">' +
+      '<a class="lrow" href="' + esc(r.pmo) + '" target="_blank" rel="noopener" title="' +
+      esc("在 PMO 甘特圖只看「" + r.name + "」及其子任務(未登入會先被導去登入頁,登入後再點一次)") +
+      '"><span class="lt">' + esc(r.name) + '</span>' +
+      '<span class="ls">' + esc(r.status) + '</span></a>' +
+      (r.parts.length ? '<ul class="parts">' + r.parts.map(function (t) {
+        return "<li>" + esc(t) + "</li>";
+      }).join("") + "</ul>" : "") + "</div></div>";
+  }
+
+  if (other.length) {
+    h += '<div class="lg otg"><span class="lgl">其他</span><div class="lgi">' +
+      other.map(function (l) {
+        return '<a class="lrow" href="' + esc(l.url) + '" target="_blank" rel="noopener">' +
+          '<span class="lt">' + esc(l.tag) + "</span></a>";
+      }).join("") + "</div></div>";
+  }
+  return h + "</div>";
+}
+
+function cardHTML(r, wi) {
+  var k = kind(r);
+  /* 這件事是不是從更早的欄位延續過來的 —— 拖過來的工作跟這週新開的工作,
+     對主管是兩件事,卡片長一樣會看不出來。 */
+  var first = r.span.indexOf(true);
+  var cont = wi > first || (wi === first && r.start && r.start < D.weeks[0].start);
+  /* 標上「PMO」:同一列現在有兩種狀態(PMO 的與 Taiga 的),不標會分不出哪顆是哪邊 */
+  var pill = k === "late" ? '<span class="pill p-late">逾期</span>' +
+    '<span class="pill p-wait">PMO ' + esc(r.status) + '</span>'
+    : '<span class="pill p-' + k + '">PMO ' + esc(r.status) + '</span>' +
+      (k === "soon" ? '<span class="pill p-soon">快到期</span>' : "");
+  /* 搞定 = 狀態完成 **且** 兩邊沒有不一致。PMO 交測但 Taiga 還在 Pending 的那種
+     絕對不能收起來 —— 那正是最需要有人去看的卡。 */
+  var settled = (k === "done" && !r.mismatch);
+  return '<article class="card s-' + k + (settled ? " settled" : "") + '" tabindex="0" role="button"' +
+    ' data-p="' + esc(CURRENT || "") + '" data-id="' + esc(r.id) + '"' +
+    ' aria-label="開啟「' + esc(r.name) + '」的詳情">' +
+    '<h3 class="ttl">' + esc(r.name) + '</h3>' +
+    '<div class="meta">' + (function () {
+      var n = rankOf(CURRENT, r.name, D.weeks[wi].start);
+      return n ? '<span class="ordb">順位 ' + n + "</span>" : "";
+    })() + pill +
+      '<time>' + md(r.start) + '–' + md(r.end) + '</time>' +
+      (cont ? '<span class="cont">↳ 延續</span>' : "") + '</div>' +
+    linksHTML(r) + "</article>";
+}
+
+function renderPerson(name) {
+  var p = D.people.filter(function (x) { return x.name === name; })[0];
+  if (!p) { p = D.people.filter(function (x) { return x.name === HOME; })[0]; }
+  if (!p) { return '<p class="sub">名單是空的。</p>'; }
+  /* 名字與「本週在手」2026-10-11 拿掉(側欄已經看得出是誰、有沒有逾期),標題只留給讀屏器 */
+  var h = '<h1 class="sr-only">' + esc(p.name) + "</h1>" +
+    '<div id="ord-host">' + orderBlock(p) + "</div>";
+
+  /* 看板:一欄 = 一週。同一件事橫跨數週時,會在相鄰欄位各出現一張卡,
+     卡片左上的跨週條就是在說明這件事 —— 兩者互相印證。 */
+  h += '<div class="board">' + D.weeks.map(function (w, wi) {
+    /* 欄內排序:有排順位的照順位在最前,其次還在做的,做完(淡色)的放最後;同組維持原本的日期順序 */
+    var rows = (p.weeks[w.label] || []).map(function (r, i) {
+      var n = rankOf(p.name, r.name, w.start);
+      var settled = kind(r) === "done" && !r.mismatch;
+      return { r: r, i: i, g: n ? 0 : (settled ? 2 : 1), n: n };
+    }).sort(function (a, b) { return a.g - b.g || a.n - b.n || a.i - b.i; })
+      .map(function (o) { return o.r; });
+    return '<section class="col w' + wi + (w.label === NOW ? " now" : "") + '">' +
+      '<div class="col-h"><h2 class="col-t">' + w.label + "</h2>" +
+      '<span class="col-d">' + md(w.start) + "–" + md(w.end) + "</span>" +
+      '<span class="col-n">' + (rows.length || "") + "</span></div>" +
+      (rows.length ? rows.map(function (r) { return cardHTML(r, wi); }).join("")
+                   : '<p class="col-e">沒有排程</p>') +
+      "</section>";
+  }).join("") + "</div>";
+
+  h += keyHTML();
+  return h;
+}
+
+
+/* ===== 項目順序 =====
+   資料:D.order 是產頁當下嵌進來的;透過 serve.py 開時會再 GET /api/order 拿最新的(產頁後才改的)。
+   能不能編輯看 serve.py 在不在(SVC);靜態開啟時只能看。 */
+var ORDER = D.order || {};
+var ORDER_EDIT = false;
+var ORD_DRAFT = null;            /* 編輯中的草稿;null = 不在編輯 */
+
+/* 每筆順序綁一週(week = 那週週一)。只在那一週有效:標籤只上那一欄,週一一過就不顯示
+   (2026-10-11 使用者要求)。週別用「瀏覽器今天」算,不用產頁當下 —— 報表沒重產也不會讓過期的還掛著。 */
+function isoDay(d) {
+  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+}
+function mondayOf(d) {
+  var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+var THIS_MON = mondayOf(new Date());
+var NEXT_MON = new Date(THIS_MON.getFullYear(), THIS_MON.getMonth(), THIS_MON.getDate() + 7);
+function weekLabel(iso) {
+  var m = new Date(iso + "T00:00:00"), e = new Date(m.getFullYear(), m.getMonth(), m.getDate() + 6);
+  return (iso === isoDay(THIS_MON) ? "本週" : "下週") + " " + md(iso) + "–" + md(isoDay(e));
+}
+function orderEntry(name) {        /* 還沒過期的那筆 {week, items},沒有回 null */
+  var o = ORDER[name];
+  return o && o.week && o.week >= isoDay(THIS_MON) && o.items && o.items.length ? o : null;
+}
+function orderOf(name) { var o = orderEntry(name); return o ? o.items : []; }
+/* 卡片是第幾順位:只算順序所屬的那一週那一欄;名稱完全相同優先,
+   其次「卡片名稱包含填的字」(填簡稱也對得上),0 = 不標 */
+function rankOf(name, rowName, colStart) {
+  var o = orderEntry(name);
+  if (!o || o.week !== colStart) { return 0; }
+  var xs = o.items, low = (rowName || "").toLowerCase();
+  for (var i = 0; i < xs.length; i++) { if (xs[i] === rowName) { return i + 1; } }
+  for (var j = 0; j < xs.length; j++) {
+    if (xs[j].length >= 2 && low.indexOf(xs[j].toLowerCase()) >= 0) { return j + 1; }
+  }
+  return 0;
+}
+function orderBlock(p) {
+  if (ORD_DRAFT && ORD_DRAFT.person === p.name) { return orderEditor(p); }
+  var o = orderEntry(p.name), xs = o ? o.items : [];
+  if (!xs.length) {
+    return ORDER_EDIT ? '<div class="ord-empty"><button type="button" class="ord-add0">＋ 設定項目順序</button></div>' : "";
+  }
+  return '<section class="ord" aria-labelledby="ord-t"><div class="ord-h"><h2 class="ord-t" id="ord-t">項目順序</h2>' +
+    '<span class="ord-wk">' + weekLabel(o.week) + "</span>" +
+    (ORDER_EDIT ? '<button type="button" class="ord-btn ord-edit">編輯</button>' : "") + "</div>" +
+    '<ol class="ord-l">' + xs.map(function (x, i) {
+      return '<li><span class="ord-p"><span class="ord-n">' + (i + 1) + "</span>" + esc(x) + "</span></li>";
+    }).join("") + "</ol></section>";
+}
+function orderEditor(p) {
+  var d = ORD_DRAFT.items;
+  /* 建議清單:這個人四週內手上的需求名稱,選了就跟看板卡片完全對得上 */
+  var seen = {}, sug = [];
+  D.weeks.forEach(function (w) {
+    (p.weeks[w.label] || []).forEach(function (r) { if (!seen[r.name]) { seen[r.name] = 1; sug.push(r.name); } });
+  });
+  var wk = ORD_DRAFT.week, tm = isoDay(THIS_MON), nm = isoDay(NEXT_MON);
+  return '<section class="ord" aria-labelledby="ord-t"><div class="ord-h"><h2 class="ord-t" id="ord-t">項目順序</h2>' +
+    '<div class="ord-seg" role="radiogroup" aria-label="套用在哪一週">' +
+    [tm, nm].map(function (w) {
+      return '<button type="button" role="radio" class="ord-wkb" data-w="' + w + '" aria-checked="' + (w === wk) + '">' +
+        weekLabel(w) + "</button>";
+    }).join("") + "</div></div>" +
+    '<ol class="ord-ed">' + d.map(function (x, i) {
+      return '<li class="ord-r"><span class="ord-n">' + (i + 1) + "</span>" +
+        '<input class="ord-in" list="ord-sug" maxlength="100" value="' + esc(x) + '" aria-label="第 ' + (i + 1) + ' 順位"' +
+        ' placeholder="需求名稱">' +
+        '<button type="button" class="ord-ic ord-up" aria-label="第 ' + (i + 1) + ' 順位上移"' + (i ? "" : " disabled") + ">↑</button>" +
+        '<button type="button" class="ord-ic ord-dn" aria-label="第 ' + (i + 1) + ' 順位下移"' + (i < d.length - 1 ? "" : " disabled") + ">↓</button>" +
+        '<button type="button" class="ord-del" aria-label="刪除第 ' + (i + 1) + ' 順位">刪除</button></li>';
+    }).join("") + "</ol>" +
+    '<datalist id="ord-sug">' + sug.map(function (x) { return '<option value="' + esc(x) + '">'; }).join("") + "</datalist>" +
+    '<p class="ord-hint">只標選定那一週的卡片，那週過完就自動消失。從建議清單選，卡片最容易對上；全部清空後儲存就拿掉。</p>' +
+    '<div class="ord-f"><button type="button" class="ord-more">＋ 新增一項</button>' +
+    '<button type="button" class="ord-cancel">取消</button><button type="button" class="ord-save">儲存</button>' +
+    '<p class="ord-msg" role="alert" hidden></p></div></section>';
+}
+function ordHost() { return document.getElementById("ord-host"); }
+function ordSync() {               /* 把輸入框目前的字收回草稿(重畫前一定要先做) */
+  var host = ordHost();
+  if (!host || !ORD_DRAFT) { return; }
+  ORD_DRAFT.items = Array.prototype.map.call(host.querySelectorAll(".ord-in"), function (i) { return i.value; });
+}
+function ordRedraw(focusIdx, noFocus) {
+  var host = ordHost(), p = D.people.filter(function (x) { return x.name === CURRENT; })[0];
+  if (!host || !p) { return; }
+  host.innerHTML = orderBlock(p);
+  if (focusIdx != null) {
+    var ins = host.querySelectorAll(".ord-in");
+    if (ins[focusIdx]) { ins[focusIdx].focus(); }
+  } else if (!ORD_DRAFT && !noFocus) {
+    var b = host.querySelector(".ord-edit, .ord-add0");
+    if (b) { b.focus(); }
+  }
+}
+function ordSave() {
+  ordSync();
+  var host = ordHost(), btn = host.querySelector(".ord-save"), msg = host.querySelector(".ord-msg");
+  var items = ORD_DRAFT.items.map(function (x) { return x.trim(); }).filter(Boolean);
+  btn.disabled = true; btn.textContent = "儲存中…"; msg.hidden = true;
+  svcReq("PUT", "order", { person: ORD_DRAFT.person, week: ORD_DRAFT.week, items: items }, orderHdr()).then(function (out) {
+    if (out.items && out.items.length) { ORDER[out.person] = { week: out.week, items: out.items }; }
+    else { delete ORDER[out.person]; }
+    ORD_DRAFT = null;
+    document.getElementById("main").innerHTML = renderPerson(CURRENT);   /* 卡片的順位標籤一起更新 */
+    ordRedraw();
+  })["catch"](function (e) {
+    btn.disabled = false; btn.textContent = "儲存";
+    msg.hidden = false; msg.textContent = "沒存成功：" + (e.msg || "未知錯誤") + "。內容還在，可以再按一次儲存。";
+  });
+}
+document.addEventListener("click", function (e) {
+  var t = e.target.closest && e.target.closest(".ord-edit, .ord-add0, .ord-up, .ord-dn, .ord-del, .ord-more, .ord-cancel, .ord-save, .ord-wkb");
+  if (!t || !ordHost() || !ordHost().contains(t)) { return; }
+  if (t.matches(".ord-edit, .ord-add0")) {
+    var cur = orderEntry(CURRENT);
+    /* 預設週別:已經有就沿用;沒有的話平日設本週,週六日(多半是在排下週)設下週 */
+    var wd = new Date().getDay();
+    ORD_DRAFT = { person: CURRENT, items: cur ? cur.items.slice() : [""],
+                  week: cur ? cur.week : isoDay(wd === 0 || wd === 6 ? NEXT_MON : THIS_MON) };
+    return ordRedraw(0);
+  }
+  if (t.matches(".ord-save")) { return ordSave(); }
+  if (t.matches(".ord-wkb")) { ordSync(); ORD_DRAFT.week = t.dataset.w; return ordRedraw(); }
+  if (t.matches(".ord-cancel")) { ORD_DRAFT = null; return ordRedraw(); }
+  ordSync();
+  var d = ORD_DRAFT.items;
+  if (t.matches(".ord-more")) { d.push(""); return ordRedraw(d.length - 1); }
+  var row = t.closest(".ord-r"), i = Array.prototype.indexOf.call(row.parentNode.children, row);
+  if (t.matches(".ord-up") && i > 0) { d.splice(i - 1, 0, d.splice(i, 1)[0]); return ordRedraw(i - 1); }
+  if (t.matches(".ord-dn") && i < d.length - 1) { d.splice(i + 1, 0, d.splice(i, 1)[0]); return ordRedraw(i + 1); }
+  if (t.matches(".ord-del")) { d.splice(i, 1); return ordRedraw(Math.min(i, d.length - 1)); }
+});
+document.addEventListener("keydown", function (e) {
+  var host = ordHost();
+  if (!ORD_DRAFT || !host || !host.contains(e.target)) { return; }
+  if (e.key === "Escape") { e.stopPropagation(); ORD_DRAFT = null; ordRedraw(); }
+  else if (e.key === "Enter" && e.target.classList.contains("ord-in")) {
+    e.preventDefault(); ordSync();
+    var i = Array.prototype.indexOf.call(host.querySelectorAll(".ord-in"), e.target);
+    ORD_DRAFT.items.splice(i + 1, 0, ""); ordRedraw(i + 1);
+  }
+}, true);
+
+
+/* ===== 組長專區:兩頁 =====
+   #/people 人員管理(名單、顯示名稱、Taiga 帳號、順序)
+   #/weekly 週報(產生 Notion 週報;人員與順序吃人員管理的設定;Notion 連結)
+   2026-10-11 使用者要求拆成兩頁。原本一頁裝全部、資料回來就整頁重畫,畫面會閃掉。
+   現在每頁只畫一次骨架,資料回來只更新自己那一格,不整頁重畫。
+   真正的把關在 serve.py(每支 /api/admin/* 都要組長鑰匙);這裡只負責畫面。 */
+var PG_PEOPLE = "\u0000people", PG_WEEKLY = "\u0000weekly";   /* CURRENT 的特殊值,不會跟人名撞 */
+var LEADER_KNOWN = false;        /* 已經問過伺服器是不是組長了 */
+var AD = null;                   /* 名單(GET /api/admin/people) */
+var NT = null;                   /* 最近一次產生的 Notion 週報 */
+function isAdminPage(c) { return c === PG_PEOPLE || c === PG_WEEKLY; }
+function notionUrl() { return (AD && AD.notion_url) || D.notion_url || "https://www.notion.so/"; }
+function adminReq(method, path, body) { return svcReq(method, "admin/" + path, body, orderHdr()); }
+function $id(x) { return document.getElementById(x); }
+function adSay(id, text, cls) { var m = $id(id); if (m) { m.textContent = text; m.className = "lz-msg " + (cls || ""); } }
+
+/* 組長專區的入口:身分還沒確認 → 先顯示確認中;確認不是組長 → 回首頁(其他人進不來) */
+function renderAdminPage() {
+  var main = $id("main");
+  if (!ORDER_EDIT) {
+    if (LEADER_KNOWN) { location.hash = "#/"; return; }
+    main.innerHTML = '<div class="lz"><p class="lz-sub">確認身分中…</p></div>';
+    return;
+  }
+  if (CURRENT === PG_PEOPLE) { peoplePage(); } else { weeklyPage(); }
+}
+function loadPeople() {
+  if (AD) { return Promise.resolve(AD); }
+  return adminReq("GET", "people").then(function (d) { AD = d; return d; });
+}
+
+/* ---------- 人員管理 ---------- */
+function peoplePage() {
+  $id("main").innerHTML = '<div class="lz"><div><h1 class="lz-h1">人員管理</h1>' +
+    '<p class="lz-sub">名單的順序就是側欄與 Notion 週報的順序（組長固定排第一）。改完週報會自動重產。</p></div>' +
+    '<section class="lz-card" aria-labelledby="pp-h"><h2 id="pp-h">成員</h2><div id="pp-list"><p class="lz-msg">讀取名單中…</p></div></section>' +
+    '<section class="lz-card" aria-labelledby="pp-ah"><h2 id="pp-ah">新增成員</h2>' +
+    '<p class="why">PMO 名字要跟 PMO 上一模一樣；Taiga 帳號填 username。兩邊都會先確認找得到才加入。</p>' +
+    '<form id="pp-add" novalidate><div class="lz-row">' +
+    '<div class="lz-f" style="flex:1 1 160px"><label for="pp-pmo">PMO 名字</label><input class="lz-in" id="pp-pmo" required placeholder="例：lily" autocomplete="off"></div>' +
+    '<div class="lz-f" style="flex:1 1 160px"><label for="pp-tg">Taiga 帳號</label><input class="lz-in" id="pp-tg" required placeholder="例：lily" autocomplete="off"></div>' +
+    '<div class="lz-f" style="flex:1 1 120px"><label for="pp-dp">顯示名稱</label><input class="lz-in" id="pp-dp" maxlength="20" placeholder="例：Lily" autocomplete="off"></div>' +
+    '<button type="submit" class="lz-btn" id="pp-go">新增</button></div>' +
+    '<p class="lz-msg" id="pp-msg" role="status" aria-live="polite"></p></form></section></div>';
+  var flash = null;
+  try { flash = sessionStorage.getItem("lzFlash"); sessionStorage.removeItem("lzFlash"); } catch (e) {}
+  if (flash) { adSay("pp-msg", flash, "ok"); }
+  loadPeople().then(drawPeople)["catch"](function (e) {
+    var box = $id("pp-list");
+    if (box) { box.innerHTML = '<p class="lz-msg bad">讀不到名單：' + esc(e.msg) + "</p>"; }
+  });
+}
+function drawPeople() {                   /* 只重畫名單表格,表單與訊息不動 */
+  var box = $id("pp-list");
+  if (!box || !AD) { return; }
+  var ps = AD.people.slice().sort(function (a, b) { return (b.leader ? 1 : 0) - (a.leader ? 1 : 0); });
+  var mem = ps.filter(function (x) { return !x.leader; });
+  box.innerHTML = '<div class="lz-tbl"><table><thead><tr><th>顯示名稱</th><th>PMO 名字</th><th>Taiga 帳號</th><th></th></tr></thead><tbody>' +
+    ps.map(function (p) {
+      var mi = mem.indexOf(p);
+      return '<tr data-pmo="' + esc(p.pmo) + '"><td>' + esc(p.display) + (p.leader ? '<span class="lz-lead">組長</span>' : "") + "</td>" +
+        '<td class="mono">' + esc(p.pmo) + '</td><td class="mono">' + (esc(p.taiga) || "（自動比對）") + "</td>" +
+        '<td><div class="acts">' + (p.leader ? "" :
+          '<button type="button" class="ord-ic pp-up" aria-label="' + esc(p.display) + ' 往上"' + (mi > 0 ? "" : " disabled") + ">↑</button>" +
+          '<button type="button" class="ord-ic pp-dn" aria-label="' + esc(p.display) + ' 往下"' + (mi < mem.length - 1 ? "" : " disabled") + ">↓</button>" +
+          '<button type="button" class="lz-btn sm danger pp-del">刪除</button>') + "</div></td></tr>";
+    }).join("") + "</tbody></table></div>";
+}
+function peopleDone(d, okText) {          /* 名單類動作的共同收尾 */
+  AD = d;
+  NT = null;                              /* 名單變了,週報預覽要重產 */
+  if (d.rebuilt !== false) {
+    /* 側欄、看板都是產頁時的資料;週報已重產,重新載入才拿得到新名單。訊息帶到載入後再顯示 */
+    try { sessionStorage.setItem("lzFlash", okText + "，週報已重產"); } catch (e) {}
+    location.reload();
+    return;
+  }
+  drawPeople();
+  adSay("pp-msg", okText + "（" + (d.message || "週報待重產") + "）");
+}
+
+/* ---------- 週報 ---------- */
+function ntDefault() {                    /* 照 Notion 既有命名(週五到週五):結束 = 今天或之後最近的週五 */
+  var t = new Date(), end = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  end.setDate(end.getDate() + ((5 - end.getDay() + 7) % 7));
+  var st = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 7);
+  return [isoDay(st), isoDay(end)];
+}
+function weeklyPage() {
+  var dd = NT ? [NT.start, NT.end] : ntDefault();
+  $id("main").innerHTML = '<div class="lz"><div><h1 class="lz-h1">週報</h1>' +
+    '<p class="lz-sub">依 PMO 產生每個人的表格，人員與順序照「人員管理」。複製後貼到 Notion 當週的頁面。</p></div>' +
+    '<section class="lz-card" aria-labelledby="nt-h"><h2 id="nt-h">產生 Notion 週報</h2><div class="lz-row">' +
+    '<div class="lz-f"><label for="nt-s">開始</label><input class="lz-in" id="nt-s" type="date" value="' + dd[0] + '"></div>' +
+    '<div class="lz-f"><label for="nt-e">結束</label><input class="lz-in" id="nt-e" type="date" value="' + dd[1] + '"></div>' +
+    '<button type="button" class="lz-btn" id="nt-go">產生週報</button>' +
+    '<a class="lz-btn ghost" id="nt-link" href="' + esc(notionUrl()) + '" target="_blank" rel="noopener">開啟 Notion 週報 ↗</a></div>' +
+    '<p class="lz-msg" id="nt-msg" role="status" aria-live="polite"></p>' +
+    '<div class="nt-out" id="nt-out"' + (NT ? ">" + ntHTML(NT) : " hidden>") + "</div></section>" +
+    '<section class="lz-card" aria-labelledby="st-h"><h2 id="st-h">Notion 週報連結</h2>' +
+    '<p class="why">側欄「Notion ↗」和上面「開啟 Notion 週報」都開這個網址。</p>' +
+    '<form id="st-f" novalidate><div class="lz-row"><div class="lz-f" style="flex:1 1 320px"><label for="st-url">網址</label>' +
+    '<input class="lz-in" id="st-url" type="url" value="' + esc(notionUrl()) + '"></div>' +
+    '<button type="submit" class="lz-btn ghost" id="st-go">儲存</button></div>' +
+    '<p class="lz-msg" id="st-msg" role="status" aria-live="polite"></p></form></section></div>';
+  /* 直接進週報頁時還沒讀過名單/設定:讀到後把 Notion 連結換成最新的(不重畫整頁) */
+  loadPeople().then(function () {
+    var lk = $id("nt-link"), su = $id("st-url");
+    if (lk) { lk.href = notionUrl(); }
+    if (su && document.activeElement !== su) { su.value = notionUrl(); }
+  })["catch"](function () {});
+  if (NT_BUSY) { ntBusy(true); adSay("nt-msg", "產生中…"); }
+  else if (NT) { adSay("nt-msg", "上次產生的結果；改了日期按「產生週報」重抓。"); }
+  else { ntGenerate(); }                  /* 第一次進來就直接產生,不用多按一下 */
+}
+/* 同時只跑一個;每次產生帶序號,回來時不是最新那次就丟掉(避免舊結果蓋掉新的) */
+var NT_SEQ = 0, NT_BUSY = false;
+function ntBusy(on) {
+  var b = $id("nt-go");
+  if (b) { b.disabled = on; b.textContent = on ? "產生中…" : "產生週報"; }
+}
+function ntGenerate() {
+  var go = $id("nt-go");
+  if (!go || NT_BUSY) { return; }
+  var s0 = $id("nt-s").value, e0 = $id("nt-e").value, seq = ++NT_SEQ;
+  NT_BUSY = true; ntBusy(true);
+  adSay("nt-msg", "從 PMO 抓 " + s0 + " ~ " + e0 + " 的資料，約十幾秒。");
+  adminReq("POST", "notion", { start: s0, end: e0 }).then(function (d) {
+    if (seq !== NT_SEQ) { return; }
+    NT_BUSY = false;
+    NT = d;
+    var b = $id("nt-go"), out = $id("nt-out");
+    if (!b || !out) { return; }           /* 等的時候已經換頁:結果留在 NT,回來會顯示 */
+    ntBusy(false);
+    var s1 = $id("nt-s"), e1 = $id("nt-e");
+    if (s1) { s1.value = d.start; } if (e1) { e1.value = d.end; }   /* 日期欄跟預覽一致 */
+    var n = d.tables.reduce(function (a, x) { return a + x.rows.length; }, 0);
+    adSay("nt-msg", "已產生 " + d.tables.length + " 人、" + n + " 項。", "ok");
+    out.hidden = false; out.innerHTML = ntHTML(d);
+  })["catch"](function (e2) {
+    if (seq !== NT_SEQ) { return; }
+    NT_BUSY = false; ntBusy(false);
+    adSay("nt-msg", e2.msg, "bad");
+  });
+}
+function ntHTML(d) {
+  return '<div class="nt-title"><span class="lz-msg">頁面標題</span><b id="nt-t">' + esc(d.title) + "</b>" +
+    '<button type="button" class="lz-btn sm ghost" id="nt-copyt">複製標題</button>' +
+    '<button type="button" class="lz-btn sm" id="nt-copy">複製全部表格</button>' +
+    '<span class="lz-msg" id="nt-cmsg" role="status" aria-live="polite"></span></div>' +
+    '<div class="nt-prev" id="nt-prev">' + d.tables.map(function (tb) {
+      var head = ["項目名稱", "目前進度"].concat(tb.uat_col ? ["預計 UAT 日期"] : []).concat(["備註"]);
+      var rows = tb.rows.length ? tb.rows : [{ name: "", status: "", uat: "" }];
+      return "<h3>" + esc(tb.title) + "</h3><table><tbody><tr>" + head.map(function (x) { return "<td>" + x + "</td>"; }).join("") + "</tr>" +
+        rows.map(function (r) {
+          return "<tr><td>" + esc(r.name) + "</td><td>" + esc(r.status) + "</td>" +
+            (tb.uat_col ? "<td>" + esc(r.uat) + "</td>" : "") + "<td></td></tr>";
+        }).join("") + "</tbody></table>";
+    }).join("") + "</div>" +
+    '<p class="lz-msg">在 Notion 用 Template 建好當週頁面，把標題換成上面那行，再把表格貼進去。</p>';
+}
+
+/* ---------- 事件 ---------- */
+document.addEventListener("submit", function (e) {
+  if (e.target.id === "pp-add") {
+    e.preventDefault();
+    var f = { pmo: $id("pp-pmo"), taiga: $id("pp-tg"), display: $id("pp-dp") };
+    Object.keys(f).forEach(function (k) { f[k].classList.remove("bad"); });
+    var body = { pmo: f.pmo.value.trim(), taiga: f.taiga.value.trim(), display: f.display.value.trim() };
+    if (!body.pmo || !body.taiga) {
+      var miss = !body.pmo ? f.pmo : f.taiga;
+      miss.classList.add("bad"); miss.focus();
+      return adSay("pp-msg", "PMO 名字和 Taiga 帳號都要填。", "bad");
+    }
+    var btn = $id("pp-go");
+    btn.disabled = true; btn.textContent = "確認中…";
+    adSay("pp-msg", "到 PMO、Taiga 確認這個人，成功後重產週報，約十幾秒。");
+    adminReq("POST", "people", body).then(function (d) {
+      btn.disabled = false; btn.textContent = "新增";
+      f.pmo.value = f.taiga.value = f.display.value = "";
+      peopleDone(d, "已新增 " + (body.display || body.pmo) + "（Taiga：" + (d.taiga_name || body.taiga) + "）");
+    })["catch"](function (e2) {
+      btn.disabled = false; btn.textContent = "新增";
+      adSay("pp-msg", e2.msg, "bad");
+      var fld = /Taiga/.test(e2.msg) ? f.taiga : (/顯示名稱/.test(e2.msg) ? f.display : f.pmo);
+      fld.classList.add("bad"); fld.focus();
+    });
+  }
+  if (e.target.id === "st-f") {
+    e.preventDefault();
+    var inp = $id("st-url"), b2 = $id("st-go");
+    inp.classList.remove("bad"); b2.disabled = true; b2.textContent = "儲存中…";
+    adminReq("PUT", "settings", { notion_url: inp.value.trim() }).then(function (d) {
+      AD = d;
+      b2.disabled = false; b2.textContent = "儲存";
+      var lk = $id("nt-link"); if (lk) { lk.href = notionUrl(); }
+      nav(CURRENT);
+      adSay("st-msg", "已儲存", "ok");
+    })["catch"](function (e2) {
+      b2.disabled = false; b2.textContent = "儲存"; inp.classList.add("bad");
+      adSay("st-msg", e2.msg, "bad");
+    });
+  }
+});
+
+document.addEventListener("click", function (e) {
+  if (!isAdminPage(CURRENT) || !e.target.closest) { return; }
+  var t = e.target.closest(".pp-up, .pp-dn, .pp-del, .pp-del-yes, .pp-del-no, #nt-go, #nt-copy, #nt-copyt");
+  if (!t) { return; }
+  var tr = t.closest("tr"), pmo = tr && tr.dataset.pmo;
+  if (t.matches(".pp-up, .pp-dn")) {
+    var lead = AD.people.filter(function (x) { return x.leader; }).map(function (x) { return x.pmo; });
+    var mem = AD.people.filter(function (x) { return !x.leader; }).map(function (x) { return x.pmo; });
+    var i = mem.indexOf(pmo), j = t.matches(".pp-up") ? i - 1 : i + 1;
+    if (j < 0 || j >= mem.length) { return; }
+    mem.splice(j, 0, mem.splice(i, 1)[0]);
+    adSay("pp-msg", "調整順序中…");
+    adminReq("PUT", "people/order", { people: lead.concat(mem) }).then(function (d) {
+      peopleDone(d, "已調整順序");
+    })["catch"](function (e2) { adSay("pp-msg", e2.msg, "bad"); });
+    return;
+  }
+  if (t.matches(".pp-del")) {             /* 刪除先在原地確認,不跳彈窗 */
+    t.parentNode.innerHTML = '<span class="lz-msg">確定移除？</span>' +
+      '<button type="button" class="lz-btn sm danger solid pp-del-yes">移除</button>' +
+      '<button type="button" class="lz-btn sm ghost pp-del-no">取消</button>';
+    tr.querySelector(".pp-del-no").focus();
+    return;
+  }
+  if (t.matches(".pp-del-no")) { drawPeople(); return; }
+  if (t.matches(".pp-del-yes")) {
+    t.disabled = true; t.textContent = "移除中…";
+    adminReq("DELETE", "people", { pmo: pmo }).then(function (d) {
+      peopleDone(d, "已移除 " + pmo);
+    })["catch"](function (e2) { drawPeople(); adSay("pp-msg", e2.msg, "bad"); });
+    return;
+  }
+  if (t.id === "nt-go") { ntGenerate(); return; }
+  if (t.id === "nt-copy" || t.id === "nt-copyt") {
+    /* 站台是 http,navigator.clipboard 不能用;選取已畫好的區塊再 execCommand,表格會以 HTML 帶進 Notion */
+    var node = $id(t.id === "nt-copy" ? "nt-prev" : "nt-t");
+    var sel = window.getSelection(), rg = document.createRange();
+    rg.selectNodeContents(node); sel.removeAllRanges(); sel.addRange(rg);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e3) { ok = false; }
+    sel.removeAllRanges();
+    adSay("nt-cmsg", ok ? (t.id === "nt-copy" ? "✓ 表格已複製，到 Notion 貼上" : "✓ 標題已複製") : "複製失敗，請手動選取後複製", ok ? "ok" : "bad");
+  }
+});
+
+
+function keyHTML() {
+  return '<div class="key">' +
+    ["done", "doing", "soon", "late", "wait"].map(function (k) {
+      return '<span><i class="dot d-' + k + '"></i>' + KTEXT[k] + "</span>";
+    }).join("") +
+    "</div>";
+}
+
+
+/* ---------- 詳情抽屜 ---------- */
+var SCRIM, DRAWER, LASTFOCUS = null;
+
+function ensureDrawer() {
+  if (DRAWER) return;
+  SCRIM = document.createElement("div"); SCRIM.className = "scrim"; SCRIM.hidden = true;
+  SCRIM.addEventListener("click", closeDrawer);
+  DRAWER = document.createElement("aside");
+  DRAWER.className = "drawer"; DRAWER.hidden = true;
+  DRAWER.setAttribute("role", "dialog"); DRAWER.setAttribute("aria-modal", "true");
+  DRAWER.setAttribute("aria-label", "任務詳情");
+  document.body.appendChild(SCRIM); document.body.appendChild(DRAWER);
+}
+
+function findRow(person, id) {
+  var p = D.people.filter(function (x) { return x.name === person; })[0];
+  if (!p) return null;
+  for (var i = 0; i < WEEKS.length; i++) {
+    var hit = (p.weeks[WEEKS[i]] || []).filter(function (r) { return r.id === id; })[0];
+    if (hit) return { row: hit, person: p };
+  }
+  return null;
+}
+
+/* 粉絲團模組那種 40 幾張子卡的需求,在個人頁打開時只想看到自己那幾列。
+   選擇記在 #dw-sub 的 data-all 上:即時資料讀回來重畫分工表時,才不會又被收回去。 */
+var ED_HEAD = "<thead><tr><th>分工</th><th>負責人</th><th>狀態</th><th>預計完成</th><th></th></tr></thead>";
+
+/* PMO 與 Taiga 兩區同一種標題列:區名(各自顏色)、數量、區塊層級的操作(顯示全部、全部儲存)靠右。
+   全部儲存放這裡而不是表格底下:它是整區的動作,跟「顯示全部」同一層;放底部時 PMO 那顆
+   會夾在兩張表中間,看不出屬於哪一區(2026-10-10 使用者提出、設計討論後定案)。 */
+function secHead(kind, meta, extra, withBulk) {
+  return '<div class="dw-sh dw-sh-' + kind + '"><span class="dw-st">' + (kind === "pmo" ? "PMO" : "Taiga") +
+    "</span>" + (meta ? '<span class="dw-sm">' + meta + "</span>" : "") + (extra || "") +
+    (withBulk ? bulkBar(kind) : "") + "</div>";
+}
+function countMeta(person, mine, total, unit) {
+  if (!mine || mine === total) { return total + " " + unit + (mine ? "" : "，含其他人"); }
+  return esc(person) + " 的 " + mine + " " + unit + "・共 " + total + " " + unit;
+}
+function subHead(person, mine, total, showingAll, withBulk) {
+  var tog = mine && mine < total
+    ? '<button type="button" class="dw-all">' + (showingAll ? "只看 " + esc(person) : "顯示全部") + "</button>" : "";
+  return secHead("pmo", countMeta(person, mine, total, "項"), tog, withBulk);
+}
+
+document.addEventListener("click", function (e) {
+  var b = e.target.closest && e.target.closest(".dw-all");
+  if (!b) { return; }
+  var host = b.closest("#dw-sub");
+  var all = host.dataset.all !== "1";
+  host.dataset.all = all ? "1" : "";
+  host.classList.toggle("only-me", !all);
+  b.textContent = all ? "只看 " + host.dataset.person : "顯示全部";
+});
+
+document.addEventListener("click", function (e) {
+  var b = e.target.closest && e.target.closest(".sv-all");
+  if (b && !b.disabled) { runBulk(b.closest(".bulk")); }
+});
+
+function drawerMeta(r) {
+  var k = kind(r);
+  return '<div class="dw-hd">' +
+    (r.mismatch ? '<p class="warn"><b>PMO 與 Taiga 對不上</b><br>' + esc(r.mismatch.text) + "</p>" : "") +
+    '<div class="dw-m"><span class="pill dw-pst">PMO ' + esc(r.status) + "</span>" +
+    (k === "late" ? '<span class="pill p-late">逾期</span>' : "") +
+    (k === "soon" ? '<span class="pill p-soon">快到期</span>' : "") +
+    '<time>' + md(r.start) + "–" + md(r.end) + "</time></div></div>";
+}
+
+function drawerHTML(r, person) {
+  var h = '<div class="dw-h"><h2 class="dw-t">' + esc(r.name) + "</h2>" +
+    '<button class="dw-x" type="button" aria-label="關閉">✕</button></div><div class="dw-b">' +
+    drawerMeta(r);
+
+
+  /* 甘特圖深連結(?task=)掛在分工表的母卡名稱上,跟 Taiga 表「卡片編號 ↗」同一種做法
+     (2026-10-10 使用者要求拿掉原本獨立的「在 PMO 只看這個需求的甘特圖」那行)。 */
+  var mineN = r.subtasks.filter(function (t) { return t.assignee === person; }).length;
+  h += '<div id="dw-sub" data-person="' + esc(person) + '" class="' +
+    (mineN && mineN < r.subtasks.length ? "only-me" : "") + '">';
+  h += subHead(person, mineN, r.subtasks.length, false);
+  if (r.subtasks.length || r.root) {
+    h += '<table class="dw-ed">' + ED_HEAD + "<tbody>";
+    if (r.root) {
+      h += '<tr class="root"><td class="nm">' + rootName(r.name, r.pmo) + "</td>" +
+        '<td class="dw-who">' + (esc(r.root.assignee) || "—") + "</td>" +
+        '<td><span class="ed-ph">' + (esc(r.root.status) || "—") + "</span></td>" +
+        '<td><span class="dw-dt">' + (r.root.end ? md(r.root.end) : "未排") + '</span></td><td class="bt"></td>' +
+        '</tr><tr class="msgrow"><td colspan="5"><p class="dw-msg" hidden></p></td></tr>';
+    }
+    h += r.subtasks.map(function (t) {
+      var mine = t.assignee === person;
+      return '<tr class="' + (mine ? "me" : "oth") + '"><td class="nm">' + pmName(t.name, r.pmo) + "</td>" +
+        '<td class="dw-who">' + (esc(t.assignee) || "—") + "</td>" +
+        '<td><span class="ed-ph">' + (esc(t.status) || "—") + "</span></td>" +
+        '<td><span class="dw-dt">' + (t.end ? md(t.end) : "未排") + '</span></td><td class="bt"></td>' +
+        '</tr><tr class="msgrow' + (mine ? "" : " oth") + '"><td colspan="5"><p class="dw-msg" hidden></p></td></tr>';
+    }).join("") + "</tbody></table>";
+  } else {
+    h += '<p class="empty">這個需求底下沒有子任務。</p>';
+  }
+  h += "</div>";
+
+  /* 跟 PMO 分工表同一種表格(2026-10-10 使用者要求「像 PMO 這樣一目瞭然」):
+     一列一張卡 —— 卡片 | 角色 | 狀態 | 最後更新 | 儲存。角色只標這人自己:ASSIGNED / WATCH / —。
+     被指派的排最前面,其次 watch,再來其他,Epic 墊底;同組維持原順序。 */
+  var RANK = { assigned: 0, watch: 1 };
+  var order = function (l) { return isEpic(l) ? 3 : RANK[l.mine] != null ? RANK[l.mine] : 2; };
+  var tgs = r.links.filter(function (l) { return l.kind === "taiga"; })
+    .map(function (l, i) { return { l: l, i: i }; })
+    .sort(function (a, b) { return order(a.l) - order(b.l) || a.i - b.i; })
+    .map(function (o) { return o.l; });
+  var tgMine = tgs.filter(function (l) { return l.mine && !isEpic(l); }).length;
+  h += '<div class="dw-tgw">' + secHead("tg", tgs.length ? countMeta(person, tgMine, tgs.length, "張") : "", "", tgs.length > 0);
+  var parent = tgs.length ? [] : (r.tg_parent || []);
+  h += tgs.length ? tgTable(tgs)
+    : parent.length ? '<p class="empty">' + tgNone(r) + "，以下是母卡掛的：</p>" + tgTable(parent)
+    : '<p class="empty">' + (r.tg_hidden ? tgNone(r) : "這個需求還沒掛 Taiga 連結。") + "</p>";
+
+  return h + "</div></div>";
+}
+
+function tgTable(tgs) {
+  return '<table class="dw-ed tg-tb"><thead><tr><th>卡片</th><th>角色</th><th>狀態</th>' +
+    "<th>最後更新</th><th></th></tr></thead><tbody>" + tgs.map(function (l) {
+    var t = l.taiga;
+    var role = isEpic(l) ? '<span class="tg-none" title="Epic 是整個需求的容器,不拿來跟這人的進度比">Epic・不比對</span>'
+      : l.mine === "assigned" ? '<span class="tg-role as">ASSIGNED</span>'
+      : l.mine === "watch" ? '<span class="tg-role wt">WATCH</span>' : '<span class="tg-none">—</span>';
+    return '<tr class="tgr' + (l.mine ? " me" : "") + '" data-url="' + esc(l.url) + '">' +
+      '<td class="nm"><span class="tg-id"><a class="tg-ref" href="' + esc(l.url) + '" target="_blank" rel="noopener"' +
+      (l.inherited ? ' title="掛在母卡"' : "") + ">" + esc(l.tag) + " ↗</a>" +
+      '<button type="button" class="tg-cp" data-copy="' + esc(l.url) + '">複製連結</button></span>' +
+      '<a class="tg-sub" href="' + esc(l.url) + '" target="_blank" rel="noopener">' +
+      esc(t && t.subject ? t.subject : "（標題未取得）") + "</a></td>" +
+      "<td>" + role + "</td>" +
+      '<td class="tg-ed"><span class="ed-ph">' + esc(t && t.status ? t.status : "未取得") + "</span></td>" +
+      '<td><span class="dw-dt">' + (t && t.modified ? md(t.modified) : "—") + "</span></td>" +
+      '<td class="bt"></td></tr><tr class="msgrow"><td colspan="5"><p class="dw-msg" hidden></p></td></tr>';
+  }).join("") + "</tbody></table>";
+}
+
+
+/* 一張都沒列出時要分清楚:真的沒掛 Taiga,還是母卡有掛、但這人不在任何一張的 ASSIGNED/WATCH 裡 */
+function tgNone(r) {
+  return r.tg_hidden ? "母卡掛的 " + r.tg_hidden + " 張 Taiga 卡都沒有他（不在 ASSIGNED / WATCH）" : "未連結 Taiga";
+}
+
+/* ===== 全部儲存 ==========================================================
+   不是另一條寫入路徑:逐列呼叫該列自己的儲存(el._save),一筆一筆依序送,
+   錯誤訊息照樣出在各列底下。依序而非同時送,是怕一次十幾個 PATCH 打到 PMO/Taiga。 */
+function bulkBar(kind) {
+  return '<div class="bulk bulk-' + kind + '" data-k="' + kind + '" hidden>' +
+    '<button type="button" class="sv-all" disabled>全部儲存</button><span class="bulk-msg" role="status" aria-live="polite"></span></div>';
+}
+function bulkItems(kind) {
+  var q = kind === "pmo" ? "#dw-sub tr[data-t]" : "tr.tgr[data-url]";
+  return Array.prototype.filter.call(DRAWER.querySelectorAll(q), function (el) { return el._save; });
+}
+function isDirty(el) {
+  var sel = el.querySelector(".ed-s, .tg-sel");
+  return sel && sel.value !== sel.dataset.was;
+}
+function refreshBulk() {
+  if (!DRAWER) { return; }
+  Array.prototype.forEach.call(DRAWER.querySelectorAll(".bulk"), function (bar) {
+    var items = bulkItems(bar.dataset.k);
+    items.forEach(function (el) {
+      var sel = el.querySelector(".ed-s, .tg-sel");
+      if (sel) { sel.classList.toggle("dirty", isDirty(el)); }
+    });
+    var n = items.filter(isDirty).length;
+    var btn = bar.querySelector(".sv-all");
+    bar.hidden = items.length < 2;
+    if (bar.dataset.busy) { return; }
+    btn.disabled = !n;
+    btn.textContent = n ? "全部儲存（" + n + " 筆）" : "全部儲存";
+  });
+}
+function runBulk(bar) {
+  var btn = bar.querySelector(".sv-all"), msg = bar.querySelector(".bulk-msg");
+  var todo = bulkItems(bar.dataset.k).filter(isDirty);
+  if (!todo.length) { return; }
+  bar.dataset.busy = "1"; btn.disabled = true;
+  var ok = 0, bad = 0;
+  msg.className = "bulk-msg"; msg.textContent = "儲存中 0 / " + todo.length + "…";
+  todo.reduce(function (p, el) {
+    return p.then(function () {
+      return el._save().then(function (good) {
+        if (good) { ok++; } else { bad++; }
+        msg.textContent = "儲存中 " + (ok + bad) + " / " + todo.length + "…";
+      });
+    });
+  }, Promise.resolve()).then(function () {
+    delete bar.dataset.busy;
+    msg.className = "bulk-msg " + (bad ? "bad" : "ok");
+    msg.textContent = bad ? "成功 " + ok + " 筆，失敗 " + bad + " 筆（原因在各列底下）" : (ok === 1 ? "✓ 已儲存" : "✓ " + ok + " 筆都已儲存");
+    refreshBulk();
+  });
+}
+
+
+/* ===== 在頁面上改 PMO 狀態(預計完成日只顯示,排程由組長在 PMO 排)====================
+   改這一段之前,先讀完這四條前提:
+
+   1. 金鑰只在伺服器(serve.py 的 PMO_API_KEY,mr-sync 的機器人 sync_bot),
+      瀏覽器不碰。所有人在這頁改的都會以「WebTeam Hook(自動化)」名義寫進 PMO ——
+      2026-10-02 使用者決定的,要以本人名義改就去 PMO。
+   2. 抽屜的分工表**可編輯時改讀 PMO 即時資料**,不是這份快照。三個理由:
+        a. 快照的 subtasks 裡沒有 task id,沒有 id 就沒有東西可以 PATCH;
+        b. 照著昨天的值改,會把別人今天早上的修改默默蓋掉;
+        c. 改完當場顯示新值,不必等明天重產。
+      也就是說「讀即時資料」不是效能取捨,是這功能唯一可行的做法。
+   3. 靜態開啟(內網文件站、file://)或伺服器沒設金鑰時,畫面與行為跟以前完全一樣。
+   4. 母卡(需求本身,以及分工裡有子卡的那幾列)狀態**可以改**,2026-10-05 使用者決定開放。
+      原本刻意鎖住:母卡狀態沒人回頭維護,weekly.py 的 group_status() 也不讀它。
+      開放的代價是母卡狀態仍不影響週報顏色,改了只同步到 PMO。日期整個頁面都不給改。
+*/
+
+/* 重抓鈕與編輯共用同一次探測:只有 serve.py 才有 /api/rebuild,edit 表示伺服器有金鑰 */
+var SVC = fetch("api/rebuild", { cache: "no-store" })
+  .then(function (r) { return r.ok ? r.json() : null; })
+  ["catch"](function () { return null; });
+
+/* 項目順序只有組長能改。鑰匙:組長用 ?leader=<key> 開一次,存進這台瀏覽器的 localStorage,
+   網址列立刻清掉(免得被截圖、轉貼)。真正的把關在 serve.py(寫入沒帶對鑰匙一律 403),
+   這裡只是決定要不要顯示編輯按鈕。 */
+var ORDER_KEY = (function () {
+  var m = /[?&]leader=([^&#]+)/.exec(location.search), k = "";
+  try {
+    if (m) {
+      k = decodeURIComponent(m[1]);
+      localStorage.setItem("pmoOrderKey", k);
+      history.replaceState(null, "", location.pathname + location.hash);
+    } else {
+      k = localStorage.getItem("pmoOrderKey") || "";
+    }
+  } catch (e) { k = m ? decodeURIComponent(m[1]) : ""; }
+  return k;
+})();
+function orderHdr() { return ORDER_KEY ? { "X-Order-Key": ORDER_KEY } : {}; }
+
+/* 拿最新一份(產頁之後改的);伺服器說鑰匙對才開放編輯。變了才重畫,沒變不動畫面。 */
+SVC.then(function (d) {
+  if (!d) { LEADER_KNOWN = true; if (isAdminPage(CURRENT)) { renderAdminPage(); } return; }
+  return svcReq("GET", "order", null, orderHdr()).then(function (o) {
+    ORDER_EDIT = !!(o && o.editable);
+    LEADER_KNOWN = true;
+    var fresh = (o && o.order) || {};
+    var changed = JSON.stringify(fresh) !== JSON.stringify(ORDER);
+    ORDER = fresh;
+    nav(CURRENT);                  /* 組長確認後才長出側欄的組長專區 */
+    if (isAdminPage(CURRENT)) { return renderAdminPage(); }
+    if (ORD_DRAFT) { return; }
+    if (changed) { document.getElementById("main").innerHTML = renderPerson(CURRENT); }
+    else { ordRedraw(null, true); }
+  });
+})["catch"](function () { LEADER_KNOWN = true; if (isAdminPage(CURRENT)) { renderAdminPage(); } });
+
+/* 轉發端點用相對路徑,兩種掛法都對:
+     本機   http://127.0.0.1:8099/pmo-weekly.html -> /api/pmo/...
+     tools-host https://tools.example.com/pmo-weekly/       -> /pmo-weekly/api/pmo/...
+   跟既有的 fetch("api/rebuild") 同一個道理,不要改成絕對路徑。 */
+function pmoReq(method, path, body) { return svcReq(method, "pmo/" + path, body); }
+function svcReq(method, path, body, extra) {
+  var h = {};
+  if (body) { h["Content-Type"] = "application/json"; }
+  for (var k in (extra || {})) { h[k] = extra[k]; }
+  return fetch("api/" + path, {
+    method: method, headers: h, body: body ? JSON.stringify(body) : undefined
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      var j = {}, bad = false;
+      try { j = JSON.parse(t || "{}"); } catch (e) { bad = true; }
+      if (r.ok && bad) { throw { code: r.status, msg: "週報服務回應的格式不對，請重新整理再試" }; }
+      if (r.ok) { return j; }
+      throw { code: r.status, msg: j.error || ("HTTP " + r.status) };
+    });
+  }, function () {
+    throw { code: 0, msg: "連不到週報服務" };
+  });
+}
+
+/* projectId:新版 build.py 會直接吐 pid;舊資料從 r.pmo 的深連結網址裡解出來,
+   所以這功能不必等報表重產就能用(9/11 產的那份也吃得下)。 */
+function pidOf(r) {
+  if (r.pid) { return r.pid; }
+  var m = /\/projects\/([^/?#]+)/.exec(r.pmo || "");
+  return m ? m[1] : "";
+}
+
+/* 同一個專案 60 秒內只打一次:連續點好幾張卡是常態,每張都重抓整包沒有意義。
+   失敗不進快取 —— 否則一次網路抖動會讓接下來一分鐘全部假失敗。 */
+var LIVE = {};
+function live(pid) {
+  var c = LIVE[pid];
+  if (c && Date.now() - c.at < 60000) { return c.p; }
+  var p = Promise.all([
+    pmoReq("GET", "projects/" + pid + "/tasks"),
+    pmoReq("GET", "projects/" + pid + "/statuses")
+  ]).then(function (a) {
+    return { tasks: (a[0] && a[0].tasks) || [], statuses: (a[1] && a[1].statuses) || [] };
+  });
+  p["catch"](function () { delete LIVE[pid]; });
+  LIVE[pid] = { at: Date.now(), p: p };
+  return p;
+}
+function liveDrop(pid) { delete LIVE[pid]; }
+
+/* 把整包 tasks 攤成「這個需求底下的所有分工」。
+   跟 build.py 的 subtask_rows() 是同一個走法(BFS 整棵子樹,不只第一層)。 */
+function subtreeOf(tasks, rootId) {
+  var kids = {};
+  tasks.forEach(function (t) {
+    var k = t.parentTaskId || "";
+    if (!kids[k]) { kids[k] = []; }
+    kids[k].push(t);
+  });
+  var out = [], stack = (kids[rootId] || []).slice();
+  while (stack.length) {
+    var t = stack.shift();
+    out.push(t);
+    (kids[t.id] || []).forEach(function (c) { stack.push(c); });
+  }
+  return out;
+}
+
+/* 母卡那格:上面一行紫色「母卡 · 甘特圖 ↗」(連到 PMO 只看這個需求),下面是名稱 ——
+   排法跟 Taiga 表的「TK4610 ↗ / 標題」一致 */
+function rootName(name, url) {
+  if (!url) { return '<span class="pm-ref">母卡</span>' + esc(name); }
+  return '<span class="tg-id"><a class="pm-ref" href="' + esc(url) + '" target="_blank" rel="noopener" ' +
+    'title="在 PMO 只看這個需求的甘特圖（未登入會先到登入頁）">母卡 · 甘特圖 ↗</a>' +
+    '<button type="button" class="tg-cp pm-cp" data-copy="' + esc(url) + '">複製連結</button></span>' +
+    pmName(name, url);
+}
+
+/* 子卡名稱也連到母卡的 ?task= —— 只聚焦子卡會看不到整件事的分工。
+   因此整張表只有母卡那列放複製鈕,子卡列複製出來會是同一條網址。 */
+function pmName(name, url) {
+  return url ? '<a class="pm-sub" href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(name) + "</a>" : esc(name);
+}
+
+function editorHTML(rows, statuses, person, showingAll, pmoUrl) {
+  var opts = statuses.map(function (st) {
+    return '<option value="' + esc(st.id) + '">' + esc(st.name) + "</option>";
+  }).join("");
+  var subs = rows.filter(function (t) { return !t._root; });
+  var mineN = subs.filter(function (t) { return t.assigneeName === person; }).length;
+  var h = subHead(person, mineN, subs.length, showingAll, true) + '<table class="dw-ed">' + ED_HEAD + "<tbody>";
+  h += rows.map(function (t) {
+    var mine = t.assigneeName === person;
+    var cls = t._root ? "root" : (mine ? "me" : "oth");
+    var sel = '<select class="ed-s" data-was="' + esc(t.statusId || "") + '">' + opts + "</select>";
+    var dt = '<span class="dw-dt">' + (t.endDate ? md(t.endDate) : "未排") + "</span>";
+    return '<tr data-t="' + esc(t.id) + '" class="' + cls + '">' +
+      '<td class="nm">' + (t._root ? rootName(t.name, pmoUrl) : pmName(t.name, pmoUrl)) + "</td>" +
+      '<td class="dw-who">' + (esc(t.assigneeName) || "—") + "</td>" +
+      "<td>" + sel + "</td><td>" + dt + "</td>" +
+      '<td class="bt"><button type="button" class="sv" disabled>儲存</button></td>' +
+      '</tr><tr class="msgrow' + (cls === "oth" ? " oth" : "") + '"><td colspan="5"><p class="dw-msg" hidden></p></td></tr>';
+  }).join("") + "</tbody></table>";
+  return h;
+}
+
+/* 抽屜打開後才跑:先把快照畫出來(瞬間可見),再用即時資料換掉分工表。
+   順序是刻意的 —— 先畫快照,使用者不會看到一片空白等著網路。 */
+function enhanceDrawer(r, person) {
+  var host = DRAWER.querySelector("#dw-sub");
+  if (!host) { return; }
+  SVC.then(function (d) {
+    if (!d || DRAWER.hidden || DRAWER.querySelector("#dw-sub") !== host) { return; }
+    if (d.edit) { loadEditor(host, r, person); }
+    if (d.taiga_edit) {
+      Array.prototype.forEach.call(DRAWER.querySelectorAll("tr.tgr[data-url]"), loadTaigaEditor);
+    }
+  });
+}
+
+/* Taiga 卡:狀態清單每個專案、每種卡(US/task/issue/epic)都不一樣,所以每張卡各問一次。
+   version 由 serve.py 在送出當下自己讀,這裡不帶 —— 帶了就是拿開抽屜那一刻的舊值去蓋。 */
+function loadTaigaEditor(box) {
+  var host = box.querySelector(".tg-ed"), bt = box.querySelector(".bt");
+  var msg = box.nextElementSibling && box.nextElementSibling.querySelector(".dw-msg");
+  if (!host || !bt || !msg) { return; }
+  var url = box.dataset.url;
+  svcReq("GET", "taiga/item?url=" + encodeURIComponent(url)).then(function (d) {
+    host.innerHTML = '<select class="tg-sel">' + d.statuses.map(function (st) {
+      return '<option value="' + esc(String(st.id)) + '">' + esc(st.name) + "</option>";
+    }).join("") + "</select>";
+    bt.innerHTML = '<button type="button" class="sv" disabled>儲存</button>';
+    var sel = host.querySelector(".tg-sel"), btn = bt.querySelector(".sv");
+    sel.value = String(d.status);
+    sel.dataset.was = sel.value;
+    sel.addEventListener("change", function () { btn.disabled = sel.value === sel.dataset.was; msg.hidden = true; refreshBulk(); });
+    box._save = function () {
+      btn.disabled = true;
+      msg.hidden = false; msg.className = "dw-msg"; msg.textContent = "儲存中…";
+      return svcReq("PATCH", "taiga/item", { url: url, status: parseInt(sel.value, 10) }).then(function (out) {
+        sel.dataset.was = String(out.status);
+        msg.className = "dw-msg ok"; msg.textContent = "✓ 已同步到 Taiga（" + (out.statusName || "") + "）";
+        restateTaiga(url, out.statusName || "");
+        refreshBulk();
+        return true;
+      })["catch"](function (e) {
+        msg.className = "dw-msg bad"; msg.textContent = explainTaiga(e);
+        btn.disabled = false;
+        refreshBulk();
+        return false;
+      });
+    };
+    btn.addEventListener("click", function () { box._save(); });
+    refreshBulk();
+  })["catch"](function (e) {
+    msg.hidden = false; msg.className = "dw-msg bad"; msg.textContent = explainTaiga(e);
+  });
+}
+
+function explainTaiga(e) {
+  if (e.code === 401 || e.code === 503) { return "週報服務的 Taiga 帳號無效或沒設定（" + e.msg + "），請通知KuanLin。"; }
+  if (e.code === 403) { return "Taiga 不讓這個帳號改這張卡（機器人沒加入這個專案？）：" + e.msg; }
+  if (e.code === 502 || e.code === 0) { return e.msg + "。是否在公司內網 / VPN？"; }
+  return e.msg || "未知錯誤";
+}
+
+function loadEditor(host, r, person) {
+  var pid = pidOf(r);
+  if (!pid) {
+    host.insertAdjacentHTML("beforeend",
+      '<p class="dw-hint">這列資料沒有專案 id，無法編輯（重新產生一次報表就會有）。</p>');
+    return;
+  }
+  host.insertAdjacentHTML("beforeend", '<p class="dw-load">正在跟 PMO 讀取即時狀態…</p>');
+  live(pid).then(function (L) {
+    if (DRAWER.hidden) { return; }                      /* 讀回來時抽屜已關 -> 丟掉 */
+    var host2 = DRAWER.querySelector("#dw-sub");
+    if (!host2) { return; }
+    var subs = subtreeOf(L.tasks, r.id);
+    var root = L.tasks.filter(function (t) { return t.id === r.id; })[0];
+    var rows = (root ? [Object.assign({}, root, { _root: true, name: r.name })] : []).concat(subs);
+    if (!rows.length) {
+      host2.innerHTML = '<p class="dw-s">分工</p><p class="empty">這個需求底下沒有子任務。</p>';
+      return;
+    }
+    var showingAll = host2.dataset.all === "1";
+    var mineN = subs.filter(function (t) { return t.assigneeName === person; }).length;
+    host2.classList.toggle("only-me", !showingAll && mineN > 0 && mineN < subs.length);
+    host2.innerHTML = editorHTML(rows, L.statuses, person, showingAll, r.pmo);
+    rows.forEach(function (t) {
+      var tr = host2.querySelector('tr[data-t="' + t.id + '"]');
+      if (!tr) { return; }
+      var sel = tr.querySelector(".ed-s");
+      if (sel) { sel.value = t.statusId || ""; }
+      wireRow(tr, pid, r, person);
+    });
+    refreshBulk();
+  })["catch"](function (e) {
+    var host2 = DRAWER.querySelector("#dw-sub");
+    if (!host2) { return; }
+    var ld = host2.querySelector(".dw-load");
+    if (ld) { ld.outerHTML = '<p class="dw-hint">' + esc(explain(e)) + "</p>"; }
+  });
+}
+
+/* PMO 的錯誤原樣轉到這裡。只在「使用者看不懂原文」時補一句,不改寫它講的事實。 */
+function explain(e) {
+  if (e.code === 401 || e.code === 503) { return "週報服務的 PMO 金鑰無效或沒設定（" + e.msg + "），請通知KuanLin。"; }
+  if (e.code === 403) { return "PMO 不讓這個帳號寫入：" + e.msg; }
+  if (e.code === 502 || e.code === 0) { return e.msg + "。是否在公司內網 / VPN？"; }
+  return e.msg || "未知錯誤";
+}
+
+function wireRow(tr, pid, r, person) {
+  var sel = tr.querySelector(".ed-s");
+  var btn = tr.querySelector(".sv"), msg = tr.nextElementSibling.querySelector(".dw-msg");
+  if (!btn || !sel) { return; }
+
+  function say(text, cls) {
+    msg.textContent = text; msg.className = "dw-msg " + (cls || "");
+    msg.hidden = !text;
+  }
+  sel.addEventListener("change", function () { btn.disabled = sel.value === sel.dataset.was; say(""); refreshBulk(); });
+
+  /* 回傳 Promise<成功與否>,單列的儲存鈕和「全部儲存」共用 */
+  tr._save = function () {
+    btn.disabled = true; say("儲存中…", "");
+    return pmoReq("PATCH", "projects/" + pid + "/tasks/" + tr.dataset.t, { projectStatusId: sel.value }).then(function (out) {
+      sel.dataset.was = out.statusId || sel.value; sel.value = sel.dataset.was;
+      say("✓ 已同步到 PMO（" + (out.statusLabel || "") + "）。" + (tr.classList.contains("root")
+        ? "這頁的狀態與顏色是看子卡算的，母卡狀態不會反映在這裡。"
+        : ""), "ok");
+      restatePmo(pid, r.id);
+      refreshBulk();
+      return true;
+    })["catch"](function (e) {
+      say(explain(e), "bad");
+      btn.disabled = false;
+      refreshBulk();
+      return false;
+    });
+  };
+  btn.addEventListener("click", function () { tr._save(); });
+}
+
+/* ===== 抽屜存檔後,看板上的卡片跟著變 =====
+   卡片的狀態/顏色/對不上警示原本是 build.py 產頁時算死的,存檔後要等重產才會動(使用者:反人類)。
+   這裡照 build.py 同一套規則在前端重算:常數從 D.rules 拿,只有「怎麼算」複製過來。
+   teamStatus / groupStatus 抄自 pmo-weekly skill 的 weekly.py team_status / group_status,
+   那邊改了這裡要跟著改。「今天」用產頁日,跟其他沒改過的卡同一天,顏色才不會一張新一張舊。
+   舊版頁面沒有 D.rules -> 整段不做,維持原本「等重產」的行為。 */
+var RULES = D.rules || null;
+var GEN_DAY = (D.generated || "").slice(0, 10);
+
+function teamStatus(t) {
+  var cat = t.statusCategory, lab = t.statusLabel || "";
+  if (["完成", "已完成", "上線結案"].indexOf(lab) >= 0 || cat === "done") { return "Done"; }
+  if (lab === "待上線") { return "待上線"; }
+  if (lab === "暫停") { return "暫停"; }
+  if (["交測", "測試中", "測試完成", "測試", "內測", "待測試", "待交測", "UAT"].indexOf(lab) >= 0 || cat === "review") { return "UAT"; }
+  if (lab === "待RD修正" || cat === "blocked") { return "待RD修正"; }
+  if (["進行中", "開發中", "Doing", "In Progress"].indexOf(lab) >= 0 || cat === "in_progress") { return "Doing"; }
+  return "待進行";
+}
+function groupStatus(items) {
+  var parents = {};
+  items.forEach(function (t) { if (t.parentTaskId) { parents[t.parentTaskId] = 1; } });
+  var leaves = items.filter(function (t) { return !parents[t.id]; });
+  var sts = (leaves.length ? leaves : items).map(teamStatus);
+  var alive = sts.filter(function (s) { return s !== "暫停" && s !== "Done"; });
+  if (alive.length) {
+    return alive.reduce(function (a, b) { return (RULES.rank[b] || 0) < (RULES.rank[a] || 0) ? b : a; });
+  }
+  return sts.indexOf("暫停") >= 0 ? "暫停" : "Done";
+}
+function overlaps(s, e, a, b) {
+  if (!s && !e) { return false; }
+  s = s || e; e = e || s;
+  return s <= b && e >= a;
+}
+function isDone(st) { return RULES.done.indexOf(st) >= 0; }
+function kindOf(done, overdue, st, end) {
+  if (overdue) { return "late"; }
+  if (done) { return "done"; }
+  if (end) {
+    var d = Math.round((Date.parse(end) - Date.parse(GEN_DAY)) / 86400000);
+    if (d >= 0 && d <= RULES.soon_days) { return "soon"; }
+  }
+  return st === "Doing" ? "doing" : "wait";
+}
+function rawStatus(shown) {
+  for (var k in RULES.show) { if (RULES.show[k] === shown) { return k; } }
+  return shown;
+}
+function tgCompare(rank, tg) {
+  if (!tg) { return null; }
+  if (tg.cancelled) { return { level: "cancelled", text: "Taiga 上已是「" + tg.status + "」(不做了)" }; }
+  if (tg.rank == null || rank == null) { return null; }
+  var d = rank - tg.rank;
+  if (d >= 2) { return { level: "ahead", text: "PMO 已到「" + (rank >= 3 ? "交測" : "進行中") + "」,Taiga 還在「" + tg.status + "」" }; }
+  if (d <= -2) { return { level: "behind", text: "Taiga 已到「" + tg.status + "」,PMO 還沒跟上" }; }
+  return null;
+}
+function isEpic(l) { return !!(l.taiga && l.taiga.kind === "epic"); }
+/* 鏡像 build.py 的 comparable():Epic 不比;只比被指派的;只被指派 Epic 時一張都不比 */
+function remismatch(r) {
+  var rank = RULES.rank[rawStatus(r.status)];
+  var tgs = r.links.filter(function (l) { return l.kind === "taiga" && l.taiga; });
+  var assigned = tgs.filter(function (l) { return l.mine === "assigned"; });
+  var judge = assigned.filter(function (l) { return !isEpic(l); });
+  if (!assigned.length) { judge = tgs.filter(function (l) { return !isEpic(l); }); }
+  r.mismatch = null;
+  r.links.forEach(function (l) { delete l.mis; });
+  judge.forEach(function (l) {
+    var m = tgCompare(rank, l.taiga);
+    if (m) { l.mis = m; r.mismatch = r.mismatch || m; }
+  });
+}
+
+/* 等同 build.py 裡「這人在這個需求底下的那幾張卡」:沒有子卡的、掛他名下的、落在四週內的。
+   回 false = 他名下已經沒有卡(被改派走了),這種不在頁面上猜,留給重產。 */
+function restateRow(r, person, tasks) {
+  var hasKids = {};
+  tasks.forEach(function (t) { if (t.parentTaskId) { hasKids[t.parentTaskId] = 1; } });
+  var root = tasks.filter(function (t) { return t.id === r.id; })[0];
+  var subs = subtreeOf(tasks, r.id);
+  var winS = D.weeks[0].start, winE = D.weeks[D.weeks.length - 1].end;
+  var mine = subs.concat(root ? [root] : []).filter(function (t) {
+    return t.assigneeName === person && !hasKids[t.id] && overlaps(t.startDate, t.endDate, winS, winE);
+  });
+  if (!mine.length) { return false; }
+  var st = groupStatus(mine);
+  var starts = mine.map(function (t) { return t.startDate || t.endDate; }).filter(Boolean).sort();
+  var ends = mine.map(function (t) { return t.endDate || t.startDate; }).filter(Boolean).sort();
+  r.start = starts[0] || null;
+  r.end = ends[ends.length - 1] || null;
+  r.done = isDone(st);
+  r.overdue = !!(r.end && r.end < GEN_DAY && !r.done);
+  r.status = RULES.show[st] || st;
+  r.kind = kindOf(r.done, r.overdue, st, r.end);
+  r.parts = mine.filter(function (t) { return t.id !== r.id; }).map(function (t) {
+    return t.name + "〔" + t.statusLabel + "〕";
+  });
+  r.subtasks = subs.map(function (t) {
+    return { name: t.name || "", assignee: t.assigneeName || "", status: t.statusLabel || "",
+             start: t.startDate || "", end: t.endDate || "" };
+  });
+  if (root) { r.root = { assignee: root.assigneeName || "", status: root.statusLabel || "", end: root.endDate || "" }; }
+  r.span = D.weeks.map(function (w) {
+    return mine.some(function (t) {
+      return overlaps(t.startDate, t.endDate, w.start, w.end) && (w.start <= GEN_DAY || !isDone(teamStatus(t)));
+    });
+  });
+  remismatch(r);
+  return true;
+}
+
+/* 同一個需求在每一週欄各有一份(JSON 序列化後不共用),重算完放回去時統一成同一個物件,
+   再依新的 span 決定它出現在哪幾欄 —— 做完的卡要從下週欄消失,退回的要回來。
+   側欄的逾期數也跟著重數,規則同 build.py(只算上週、本週)。 */
+function placeRow(p, r) {
+  WEEKS.forEach(function (label, i) {
+    var xs = p.weeks[label] || (p.weeks[label] = []);
+    var at = -1;
+    xs.forEach(function (x, j) { if (x.id === r.id) { at = j; } });
+    if (r.span[i]) { if (at >= 0) { xs[at] = r; } else { xs.push(r); } }
+    else if (at >= 0) { xs.splice(at, 1); }
+  });
+  var counted = {};
+  ["上週", "本週"].forEach(function (label) {
+    (p.weeks[label] || []).forEach(function (x) { counted[x.id] = x; });
+  });
+  var cs = Object.keys(counted).map(function (k) { return counted[k]; });
+  p.open = (p.weeks["本週"] || []).filter(function (x) { return !x.done; }).length;
+  p.overdue = cs.filter(function (x) { return x.overdue; }).length;
+  p.soon = cs.filter(function (x) { return x.kind === "soon"; }).length;
+}
+
+function redrawBoard() {
+  if (CURRENT && !isAdminPage(CURRENT)) {
+    ordSync();
+    var y = window.scrollY;
+    document.getElementById("main").innerHTML = renderPerson(CURRENT);
+    window.scrollTo(0, y);
+    nav(CURRENT);
+  }
+  if (DRAWER && !DRAWER.hidden) {
+    var f = findRow(DRAWER.dataset.p, DRAWER.dataset.id), hd = DRAWER.querySelector(".dw-hd");
+    if (f && hd) { hd.outerHTML = drawerMeta(f.row); }
+  }
+}
+
+/* 「全部儲存」會連發好幾筆 PATCH:同一個需求等最後一筆回來後再抓一次就好 */
+var RESTATE_T = {};
+function restatePmo(pid, rootId) {
+  liveDrop(pid);
+  if (!RULES) { return; }
+  var k = pid + "\u0000" + rootId;
+  clearTimeout(RESTATE_T[k]);
+  RESTATE_T[k] = setTimeout(function () {
+    delete RESTATE_T[k];
+    live(pid).then(function (L) {
+      D.people.forEach(function (p) {
+        var f = findRow(p.name, rootId);
+        if (f && restateRow(f.row, p.name, L.tasks)) { placeRow(p, f.row); }
+      });
+      redrawBoard();
+    })["catch"](function () {});
+  }, 400);
+}
+
+function restateTaiga(url, statusName) {
+  if (!RULES) { return; }
+  var key = statusName.trim().toLowerCase();
+  D.people.forEach(function (p) {
+    WEEKS.forEach(function (label) {
+      (p.weeks[label] || []).forEach(function (r) {
+        var hit = false;
+        r.links.concat(r.tg_parent || []).forEach(function (l) {
+          if (l.kind !== "taiga" || l.url !== url) { return; }
+          l.taiga = Object.assign({}, l.taiga, {
+            status: statusName,
+            rank: key in RULES.tg_rank ? RULES.tg_rank[key] : null,
+            cancelled: RULES.tg_cancelled.indexOf(key) >= 0
+          });
+          hit = true;
+        });
+        if (hit) { remismatch(r); }
+      });
+    });
+  });
+  redrawBoard();
+}
+
+function openDrawer(person, id, push) {
+  var f = findRow(person, id);
+  if (!f) return;
+  ensureDrawer();
+  LASTFOCUS = document.activeElement;
+  DRAWER.classList.remove("tv-on");
+  DRAWER.innerHTML = drawerHTML(f.row, person);
+  DRAWER.dataset.p = person; DRAWER.dataset.id = id;
+  DRAWER.hidden = false; SCRIM.hidden = false;
+  document.body.style.overflow = "hidden";
+  DRAWER.querySelector(".dw-x").addEventListener("click", closeDrawer);
+  enhanceDrawer(f.row, person);
+  DRAWER.querySelector(".dw-x").focus();
+  if (push) { SUPPRESS = true; location.hash = "#/p/" + encodeURIComponent(person) + "/t/" + id; }
+}
+
+/* 掛在 document:線上版的 PMO 分工表會被即時資料重畫一次,直接綁在按鈕上的事件會跟著消失。
+   站台是 http,navigator.clipboard 在非安全來源不可用 —— 一定要留 execCommand 的退路 */
+document.addEventListener("click", function (e) {
+  var b = e.target.closest && e.target.closest(".tg-cp");
+  if (!b) { return; }
+  var text = b.dataset.copy, label = b.dataset.label || b.textContent;
+  b.dataset.label = label;
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", "");
+  ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  var ok = false;
+  try { ok = document.execCommand("copy"); } catch (e2) { ok = false; }
+  document.body.removeChild(ta);
+  if (!ok && navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(mark);
+    return;
+  }
+  if (ok) { mark(); }
+  function mark() {
+    b.textContent = "✓ 已複製"; b.classList.add("done");
+    setTimeout(function () { b.textContent = label; b.classList.remove("done"); }, 1600);
+  }
+});
+
+/* ---------- Taiga 預覽:點 Taiga 標題在抽屜裡看卡片內容(serve.py /api/taiga/view) ----------
+   靜態開啟(沒有 serve.py)或服務沒設 Taiga 帳號時不攔,標題照常開新分頁。
+   修飾鍵 / 中鍵也不攔 —— 想開分頁的人本來就會這樣按。 */
+var TV_OK = false, TV_SEQ = 0, TV_SCROLL = 0, TV_CACHE = {};
+var TV_TTL = 60000;
+SVC.then(function (d) { TV_OK = !!(d && d.taiga_view); });
+
+document.addEventListener("click", function (e) {
+  var a = e.target.closest && e.target.closest("a.tg-sub");
+  if (!a || !TV_OK || !DRAWER || DRAWER.hidden) { return; }
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+  e.preventDefault();
+  openTaigaView(a.href);
+});
+
+function openTaigaView(url) {
+  var host = DRAWER.querySelector(".tv");
+  if (!host) {
+    host = document.createElement("div"); host.className = "tv";
+    DRAWER.appendChild(host);
+  }
+  if (!DRAWER.classList.contains("tv-on")) { TV_SCROLL = DRAWER.scrollTop; }
+  host.style.setProperty("--tv-top", (DRAWER.querySelector(".dw-h") || { offsetHeight: 0 }).offsetHeight + "px");
+  DRAWER.classList.add("tv-on");
+  var back = (DRAWER.querySelector(".dw-t") || {}).textContent || "";
+  host.innerHTML = tvBar(back, url) + '<p class="tv-msg">讀取 Taiga 卡片中…</p>';
+  DRAWER.scrollTop = 0;
+  host.querySelector(".tv-back").focus();
+  var seq = ++TV_SEQ;
+  var hit = TV_CACHE[url];
+  var got = hit && Date.now() - hit.at < TV_TTL ? Promise.resolve(hit.data)
+    : fetch("api/taiga/view?url=" + encodeURIComponent(url), { cache: "no-store" }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) { throw new Error(j.error || ("HTTP " + r.status)); }
+        TV_CACHE[url] = { at: Date.now(), data: j };
+        return j;
+      });
+    });
+  got.then(function (v) {
+    if (seq !== TV_SEQ || !DRAWER.classList.contains("tv-on")) { return; }
+    host.innerHTML = tvBar(back, url) + tvBody(v, url);
+  })["catch"](function (err) {
+    if (seq !== TV_SEQ || !DRAWER.classList.contains("tv-on")) { return; }
+    host.innerHTML = tvBar(back, url) + '<p class="tv-msg bad">讀不到這張 Taiga 卡：' + esc(err.message) +
+      "<br>可以先點右上「在 Taiga 開啟」。</p>";
+  });
+}
+
+function closeTaigaView() {
+  TV_SEQ++;
+  DRAWER.classList.remove("tv-on");
+  var host = DRAWER.querySelector(".tv");
+  if (host) { host.innerHTML = ""; }
+  DRAWER.scrollTop = TV_SCROLL;
+}
+
+document.addEventListener("click", function (e) {
+  if (e.target.closest && e.target.closest(".tv-back")) { closeTaigaView(); }
+});
+
+function tvBar(back, url) {
+  return '<div class="tv-bar"><button type="button" class="tv-back" title="回到 PMO 項目">← ' + esc(back) + "</button>" +
+    '<a class="tv-open" href="' + esc(url) + '" target="_blank" rel="noopener">在 Taiga 開啟 ↗</a></div>';
+}
+
+var TV_TAG = { us: "US", task: "TK", issue: "IS", epic: "EP" };
+var TV_CHILD = { us: "Tasks", epic: "User Stories" };
+
+function tvBody(v, url) {
+  var base = url.replace(/^(https?:\/\/[^\/]+).*$/, "$1");
+  var h = '<div><span class="tv-k">' + (TV_TAG[v.kind] || "") + v.ref + '</span><span class="tv-pj">' + esc(v.project) + "</span></div>" +
+    '<h3 class="tv-t">' + esc(v.subject) + "</h3>" +
+    '<div class="tv-meta"><span class="tv-st" style="--dot:' + esc(v.status.color || "#70728F") + '"><i></i>' + esc(v.status.name || "—") + "</span>" +
+    "<span>指派 <b>" + (v.assigned.length ? v.assigned.map(esc).join("、") : "未指派") + "</b></span>" +
+    (v.owner ? "<span>建立 <b>" + esc(v.owner) + "</b> " + md(v.created) + "</span>" : "") +
+    "<span>更新 " + md(v.modified) + "</span>" +
+    (v.due ? "<span>到期 <b>" + md(v.due) + "</b></span>" : "") + "</div>" +
+    (v.tags.length ? '<div class="tv-tags">' + v.tags.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") + "</div>" : "");
+
+  h += tvHead("描述") + (v.description_html ? '<div class="tv-md">' + cleanHTML(v.description_html, base) + "</div>"
+    : '<p class="tv-empty">沒有描述。</p>');
+
+  if (TV_CHILD[v.kind]) {
+    h += tvHead(TV_CHILD[v.kind], v.children.length);
+    h += v.children.length ? '<ul class="tv-ch">' + v.children.map(function (c) {
+      return '<li class="' + (c.status.closed ? "cl" : "") + '"><a class="tg-ref" href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
+        esc(c.tag) + ' ↗</a><span class="s">' + esc(c.subject) + "</span>" +
+        '<span class="tv-st" style="--dot:' + esc(c.status.color || "#70728F") + '"><i></i>' + esc(c.status.name) + "</span>" +
+        '<span class="w">' + (esc(c.assignee) || "未指派") + "</span></li>";
+    }).join("") + "</ul>" : '<p class="tv-empty">沒有。</p>';
+  }
+
+  if (v.attachments.length) {
+    h += tvHead("附件", v.attachments.length) + '<div class="tv-at">' + v.attachments.map(function (a) {
+      var ext = (a.name.split(".").pop() || "").toUpperCase();
+      var pic = a.thumb ? '<img src="' + esc(a.thumb) + '" alt="" loading="lazy">' : '<span class="f">' + esc(ext) + "</span>";
+      return '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + pic + esc(a.name) + "</a>";
+    }).join("") + "</div>";
+  }
+
+  h += tvHead("留言", v.comments.length);
+  h += v.comments.length ? v.comments.map(function (c) {
+    return '<div class="tv-cm"><p class="tv-cm-h"><b>' + esc(c.user) + "</b>" + tvWhen(c.date) + "</p>" +
+      '<div class="tv-md">' + cleanHTML(c.html, base) + "</div></div>";
+  }).join("") : '<p class="tv-empty">還沒有留言。要留言請「在 Taiga 開啟」。</p>';
+  return h;
+}
+
+function tvHead(label, n) {
+  return '<div class="dw-sh dw-sh-tg"><span class="dw-st">' + esc(label) + "</span>" +
+    (n != null ? '<span class="dw-sm">' + n + "</span>" : "") + "</div>";
+}
+
+function tvWhen(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) { return ""; }
+  var p = function (n) { return (n < 10 ? "0" : "") + n; };
+  return (d.getMonth() + 1) + "/" + d.getDate() + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+/* Taiga 回來的 HTML 它自己清過一次,但這裡是我們的網域、頁面能改 PMO,不能把別人系統的輸出當可信。
+   白名單:不認得的標籤拆掉外殼留內容;會執行或嵌入東西的整個丟掉;屬性只留顯示需要的。 */
+var CLEAN_DROP = { SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, FORM: 1, TEXTAREA: 1, SELECT: 1, BUTTON: 1, LINK: 1, META: 1, SVG: 1, MATH: 1 };
+var CLEAN_KEEP = { P: 1, BR: 1, STRONG: 1, B: 1, EM: 1, I: 1, U: 1, S: 1, DEL: 1, CODE: 1, PRE: 1, BLOCKQUOTE: 1,
+  UL: 1, OL: 1, LI: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, HR: 1, A: 1, IMG: 1, TABLE: 1, THEAD: 1,
+  TBODY: 1, TR: 1, TH: 1, TD: 1, SPAN: 1, DIV: 1, INPUT: 1, SUP: 1, SUB: 1, MARK: 1 };
+function cleanHTML(html, base) {
+  var doc = new DOMParser().parseFromString("<div>" + html + "</div>", "text/html");
+  var root = doc.body.firstChild;
+  (function walk(el) {
+    Array.prototype.slice.call(el.children).forEach(function (c) {
+      if (CLEAN_DROP[c.tagName] || (c.tagName === "INPUT" && c.type !== "checkbox")) { c.remove(); return; }
+      walk(c);
+      if (!CLEAN_KEEP[c.tagName]) { c.replaceWith.apply(c, Array.prototype.slice.call(c.childNodes)); return; }
+      Array.prototype.slice.call(c.attributes).forEach(function (at) {
+        if (["href", "src", "alt", "title", "colspan", "rowspan", "checked"].indexOf(at.name) < 0) { c.removeAttribute(at.name); }
+      });
+      ["href", "src"].forEach(function (k) {
+        var v = c.getAttribute(k);
+        if (v == null) { return; }
+        if (/^\//.test(v)) { v = base + v; }
+        if (/^https?:\/\//i.test(v) || (k === "href" && /^mailto:/i.test(v))) { c.setAttribute(k, v); } else { c.removeAttribute(k); }
+      });
+      if (c.tagName === "A") { c.setAttribute("target", "_blank"); c.setAttribute("rel", "noopener"); }
+      if (c.tagName === "INPUT") { c.setAttribute("disabled", ""); }
+      if (c.tagName === "IMG") { c.setAttribute("loading", "lazy"); }
+    });
+  })(root);
+  return root.innerHTML;
+}
+
+function closeDrawer() {
+  if (!DRAWER || DRAWER.hidden) return;
+  var unsaved = bulkItems("pmo").concat(bulkItems("tg")).filter(isDirty).length;
+  if (unsaved && !confirm("還有 " + unsaved + " 筆狀態改了沒儲存，確定要關閉？")) return;
+  DRAWER.hidden = true; SCRIM.hidden = true;
+  document.body.style.overflow = "";
+  /* 存檔後看板會重畫,原本那張卡已經不在 DOM 上 -> 改找同一個需求的新卡 */
+  if (LASTFOCUS && !LASTFOCUS.isConnected && LASTFOCUS.dataset && LASTFOCUS.dataset.id) {
+    LASTFOCUS = document.querySelector('.card[data-id="' + CSS.escape(LASTFOCUS.dataset.id) + '"]');
+  }
+  if (LASTFOCUS && LASTFOCUS.focus) LASTFOCUS.focus();
+  if (/\/t\//.test(location.hash) && CURRENT) {
+    SUPPRESS = true; location.hash = "#/p/" + encodeURIComponent(CURRENT);
+  }
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") { return; }
+  if (DRAWER && DRAWER.classList.contains("tv-on")) { closeTaigaView(); } else { closeDrawer(); }
+});
+document.addEventListener("click", function (e) {
+  if (e.target.closest("a, button")) return;      /* 連結與按鈕照常運作 */
+  var card = e.target.closest(".card");
+  if (card && card.dataset.id) openDrawer(card.dataset.p, card.dataset.id, true);
+});
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  var card = e.target.closest && e.target.closest(".card");
+  if (card && card.dataset.id) { e.preventDefault(); openDrawer(card.dataset.p, card.dataset.id, true); }
+});
+
+/* 側欄:組長一區、組員一區(沒設 leader 就只有組員)。總覽頁 2026-10-11 拿掉,預設進組長頁。
+   頭像試過,使用者覺得不需要(2026-10-11)。 */
+function nav(active) {
+  function link(p, lead) {
+    var label = (D.nav_names || {})[p.name] || p.name;   /* 側欄用的稱呼;其他地方照 PMO 名字 */
+    return '<a class="navlink' + (lead ? " lead" : "") + '" href="#/p/' + encodeURIComponent(p.name) + '"' +
+      ' title="' + esc(label === p.name ? p.name : label + "（" + p.name + "）") + "：本週在手 " + p.open +
+      (p.overdue ? "，逾期 " + p.overdue : "") + '"' +
+      (active === p.name ? ' aria-current="page"' : "") + ">" +
+      '<span class="who"><span class="nm">' + esc(label) + "</span></span>" +
+      (p.overdue ? '<span class="bad">逾期 ' + p.overdue + "</span>" : "") + "</a>";
+  }
+  /* 組長不列在組員那區(2026-10-11:其他人不用看到組長的排程),組長自己從組長專區的「我的排程」進 */
+  var mem = D.people.filter(function (p) { return p.name !== D.leader; });
+  var lead = D.people.filter(function (p) { return p.name === D.leader; })[0];
+  var h = '<p class="navh">組員<span class="n">' + mem.length + "</span></p>" +
+    mem.map(function (p) { return link(p, false); }).join("");
+  if (ORDER_EDIT) {                 /* 只有帶對組長鑰匙的瀏覽器看得到 */
+    h += '<p class="navh">組長專區</p>' +
+      (lead ? '<a class="navlink lzn" href="#/p/' + encodeURIComponent(lead.name) + '"' +
+        (active === lead.name ? ' aria-current="page"' : "") + '><span class="who"><span class="nm">我的排程</span></span>' +
+        (lead.overdue ? '<span class="bad">逾期 ' + lead.overdue + "</span>" : "") + "</a>" : "") +
+      '<a class="navlink lzn" href="#/people"' + (active === PG_PEOPLE ? ' aria-current="page"' : "") +
+      '><span class="who"><span class="nm">人員管理</span></span></a>' +
+      '<a class="navlink lzn" href="#/weekly"' + (active === PG_WEEKLY ? ' aria-current="page"' : "") +
+      '><span class="who"><span class="nm">週報</span></span></a>' +
+      '<a class="navlink lzn" href="' + esc(notionUrl()) + '" target="_blank" rel="noopener">' +
+      '<span class="who"><span class="nm">Notion</span></span><span class="ext">↗</span></a>';
+  }
+  document.getElementById("navlist").innerHTML = h;
+}
+
+var SUPPRESS = false;   /* 開/關抽屜自己改 hash 時,不要重畫整頁 */
+
+function route() {
+  if (SUPPRESS) { SUPPRESS = false; return; }
+  var mt = /^#\/p\/([^/]+)\/t\/(.+)$/.exec(location.hash);
+  var m = /^#\/p\/([^/]+)$/.exec(location.hash);
+  if (location.hash === "#/people" || location.hash === "#/weekly" || location.hash === "#/admin") {
+    CURRENT = location.hash === "#/people" ? PG_PEOPLE : PG_WEEKLY;   /* 舊的 #/admin 當成週報頁 */
+    ORD_DRAFT = null; closeDrawer();
+    nav(CURRENT);
+    renderAdminPage();
+    document.title = (CURRENT === PG_PEOPLE ? "人員管理" : "週報") + " · " + D.title;
+    window.scrollTo(0, 0);
+    return;
+  }
+  var name = mt ? decodeURIComponent(mt[1]) : (m ? decodeURIComponent(m[1]) : HOME);
+  CURRENT = name;
+  ORD_DRAFT = null;                /* 換人就丟掉沒存的順序草稿 */
+  closeDrawer();
+  document.getElementById("main").innerHTML = renderPerson(name);
+  nav(name);
+  document.title = name + " · " + D.title;
+  window.scrollTo(0, 0);
+  if (mt) openDrawer(name, decodeURIComponent(mt[2]), false);   /* 直接開網址也能帶出抽屜 */
+}
+window.addEventListener("hashchange", route);
+route();
+
+/* 側欄時鐘:本機時間,每秒更新。與左上的「更新於」是兩件事——
+   那個是資料抓取時間,這個是現在幾點,兩者並排時很容易混淆,所以字級與位置刻意拉開。 */
+(function () {
+  var cd = document.getElementById("cd"), ct = document.getElementById("ct");
+  var by = document.getElementById("by");
+  if (by) {
+    var who = "__AUTHOR__";
+    by.textContent = who ? "created by " + who : "";
+  }
+  if (!cd || !ct) return;
+  var WD = ["日", "一", "二", "三", "四", "五", "六"];
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function tick() {
+    var n = new Date();
+    cd.textContent = n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate()) +
+      "　週" + WD[n.getDay()];
+    ct.textContent = pad(n.getHours()) + ":" + pad(n.getMinutes()) + ":" + pad(n.getSeconds());
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+/* ── 重抓資料 ────────────────────────────────────────────────
+   只有經由 scripts/serve.py 開啟時才有 /api/rebuild;靜態開啟(file:// 或
+   一般 static server、內網文件站)偵測不到就把鈕藏起來,不留一顆按了沒反應的死鈕。
+   冷卻以 **server 回報的秒數** 為準:按完會 reload,前端計時器會歸零,
+   只靠前端擋的話重整幾次就繞過去了,多開分頁也是。 */
+(function () {
+  var btn = document.getElementById("rb");
+  var msg = document.getElementById("rbmsg");
+  var timer = null;
+
+  function say(text, bad) {
+    msg.hidden = !text;
+    msg.textContent = text || "";
+    msg.classList.toggle("bad", !!bad);
+  }
+  function countdown(sec) {
+    clearInterval(timer);
+    if (!(sec > 0)) { btn.disabled = false; btn.textContent = "重抓資料"; return; }
+    btn.disabled = true;
+    var left = sec;
+    btn.textContent = "重抓資料（" + left + "s）";
+    timer = setInterval(function () {
+      left -= 1;
+      if (left <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = "重抓資料"; }
+      else btn.textContent = "重抓資料（" + left + "s）";
+    }, 1000);
+  }
+
+  SVC.then(function (d) {
+      if (!d) { return; }
+      btn.hidden = false;
+      countdown(d.cooldown);          /* 重整後接回剩餘冷卻,不會歸零 */
+      if (d.running) say("正在重抓…");
+    })
+    .catch(function () { /* 沒有本機服務,維持隱藏 */ });
+
+  btn.addEventListener("click", function () {
+    btn.disabled = true;
+    btn.textContent = "重抓中…";
+    say("正在抓 PMO 與 Taiga，約十幾秒。");
+    fetch("api/rebuild", { method: "POST", cache: "no-store" })
+      .then(function (r) { return r.json().then(function (d) { return { s: r.status, d: d }; }); })
+      .then(function (o) {
+        if (o.s === 429) { say(o.d.error, true); countdown(o.d.cooldown || 30); return; }
+        if (!o.d.ok) { say(o.d.message || "重抓失敗", true); countdown(o.d.cooldown || 30); return; }
+        say("已更新，重新載入…");
+        location.reload();
+      })
+      .catch(function (e) {
+        say("連不上本機服務：" + e, true);
+        countdown(5);
+      });
+  });
+})();
+</script>
+</body>
+</html>
