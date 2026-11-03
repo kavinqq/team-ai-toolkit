@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+people.json
+order.json
+out/
+webaide-mcp/etc/
